@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push - Card Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .game-info span {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .player-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .deck {
+            width: 80px;
+            height: 112px;
+            background: linear-gradient(145deg, #2c3e50, #1a252f);
+            border: 3px solid #34495e;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+            font-weight: bold;
+            cursor: default;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+        }
+
+        .deck.clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .deck.clickable:hover {
+            transform: scale(1.05);
+        }
+
+        .card {
+            width: 80px;
+            height: 112px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .card.red {
+            color: #c0392b;
+        }
+
+        .card.black {
+            color: #2c3e50;
+        }
+
+        .card .corner {
+            position: absolute;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .card .corner.top-left {
+            top: 5px;
+            left: 5px;
+        }
+
+        .card .corner.bottom-right {
+            bottom: 5px;
+            right: 5px;
+            transform: rotate(180deg);
+        }
+
+        .card .suit {
+            font-size: 32px;
+        }
+
+        .current-card-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .current-card-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .piles-container {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            padding: 30px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 16px;
+        }
+
+        .pile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pile-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .pile-slot {
+            width: 90px;
+            height: 126px;
+            border: 3px dashed rgba(255,255,255,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .pile-slot:hover {
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .pile-slot.highlight {
+            border-color: #f1c40f;
+            background: rgba(241, 196, 15, 0.2);
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
+        }
+
+        .pile-slot .card {
+            width: 84px;
+            height: 118px;
+        }
+
+        .pile-info {
+            font-size: 12px;
+            text-align: center;
+            min-height: 36px;
+        }
+
+        .pile-info .special {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+        .pile-info .count {
+            color: #3498db;
+        }
+
+        .hidden-card {
+            width: 80px;
+            height: 112px;
+            background: linear-gradient(145deg, #8e44ad, #6c3483);
+            border: 3px solid #9b59b6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .hidden-card::after {
+            content: "?";
+            font-size: 32px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .message {
+            background: rgba(0,0,0,0.4);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 18px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .message.push {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            animation: pulse 0.5s ease-in-out 3;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        button.primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1f6dad);
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+        }
+
+        button.secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7a7b);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .winner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .winner-overlay h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .winner-overlay.player-wins h2 {
+            color: #2ecc71;
+        }
+
+        .winner-overlay.claude-wins h2 {
+            color: #e74c3c;
+        }
+
+        .rules-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+
+        .rules-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 380px;
+            height: 100vh;
+            background: rgba(0,0,0,0.95);
+            padding: 20px;
+            overflow-y: auto;
+            transition: right 0.3s;
+            z-index: 49;
+        }
+
+        .rules-panel.open {
+            right: 0;
+        }
+
+        .rules-panel h3 {
+            margin: 15px 0 10px;
+            color: #f1c40f;
+        }
+
+        .rules-panel p, .rules-panel li {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .rules-panel ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🃏 Push</h1>
+
+    <div class="game-info">
+        <span>Your Cards: <strong id="player-count">26</strong></span>
+        <span>Claude's Cards: <strong id="claude-count">26</strong></span>
+    </div>
+
+    <div class="game-container">
+        <!-- Claude's Area -->
+        <div class="player-area">
+            <div class="deck" id="claude-deck">
+                <span id="claude-deck-count">26</span>
+            </div>
+            <div class="current-card-area">
+                <div class="current-card-label">Claude's Card</div>
+                <div class="hidden-card" id="claude-current"></div>
+            </div>
+        </div>
+
+        <!-- Message Area -->
+        <div class="message" id="message">Draw a card to begin!</div>
+
+        <!-- Piles -->
+        <div class="piles-container">
+            <div class="pile">
+                <div class="pile-label">Pile 1</div>
+                <div class="pile-slot" id="pile-0" onclick="playCard(0)"></div>
+                <div class="pile-info" id="pile-info-0"></div>
+            </div>
+            <div class="pile">
+                <div class="pile-label">Pile 2</div>
+                <div class="pile-slot" id="pile-1" onclick="playCard(1)"></div>
+                <div class="pile-info" id="pile-info-1"></div>
+            </div>
+            <div class="pile">
+                <div class="pile-label">Pile 3</div>
+                <div class="pile-slot" id="pile-2" onclick="playCard(2)"></div>
+                <div class="pile-info" id="pile-info-2"></div>
+            </div>
+        </div>
+
+        <!-- Player's Area -->
+        <div class="player-area">
+            <div class="deck clickable" id="player-deck" onclick="drawCard()">
+                <span id="player-deck-count">26</span>
+            </div>
+            <div class="current-card-area">
+                <div class="current-card-label">Your Card</div>
+                <div id="player-current"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="secondary" onclick="newGame()">New Game</button>
+        </div>
+    </div>
+
+    <div class="rules-toggle">
+        <button class="secondary" onclick="toggleRules()">Rules</button>
+    </div>
+
+    <div class="rules-panel" id="rules-panel">
+        <h2>How to Play Push</h2>
+        <p>The goal is to get rid of all your cards!</p>
+
+        <h3>Setup</h3>
+        <p>Each player has 26 cards. There are 3 piles in the middle.</p>
+
+        <h3>Gameplay</h3>
+        <ul>
+            <li>Draw a card from your deck</li>
+            <li>Play it on any of the 3 piles</li>
+            <li>Players alternate turns</li>
+        </ul>
+
+        <h3>Special Cards</h3>
+        <ul>
+            <li><strong>Ace:</strong> Next player to play the 4th number card causes a PUSH</li>
+            <li><strong>King:</strong> Same as Ace, but 3 cards</li>
+            <li><strong>Queen:</strong> Same as Ace, but 2 cards</li>
+            <li><strong>Jack:</strong> Same as Ace, but 1 card</li>
+        </ul>
+
+        <h3>Push!</h3>
+        <p>When a PUSH happens, the other player must take all cards from that pile!</p>
+
+        <h3>Special on Special</h3>
+        <ul>
+            <li>Playing a special card on another special card: YOU take the pile (pile resets)</li>
+            <li>Exception: Jack on Jack = the OTHER player takes the pile</li>
+        </ul>
+
+        <h3>Winning</h3>
+        <p>First player to get rid of all their cards wins!</p>
+    </div>
+
+    <div class="winner-overlay" id="winner-overlay" style="display: none;">
+        <h2 id="winner-text"></h2>
+        <button class="primary" onclick="newGame()">Play Again</button>
+    </div>
+
+    <script>
+        // Card and game state
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+        let playerDeck = [];
+        let claudeDeck = [];
+        let playerCurrentCard = null;
+        let claudeCurrentCard = null;
+        let piles = [[], [], []];
+        let pileStates = [null, null, null]; // tracks special card state: {card, count, target}
+        let isPlayerTurn = true;
+        let gameOver = false;
+
+        function createDeck() {
+            const deck = [];
+            for (const suit of suits) {
+                for (const value of values) {
+                    deck.push({ suit, value });
+                }
+            }
+            return deck;
+        }
+
+        function shuffle(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+
+        function isRed(card) {
+            return card.suit === '♥' || card.suit === '♦';
+        }
+
+        function isSpecialCard(card) {
+            return ['A', 'J', 'Q', 'K'].includes(card.value);
+        }
+
+        function getSpecialTarget(card) {
+            switch (card.value) {
+                case 'A': return 4;
+                case 'K': return 3;
+                case 'Q': return 2;
+                case 'J': return 1;
+                default: return 0;
+            }
+        }
+
+        function renderCard(card, small = false) {
+            if (!card) return '';
+            const colorClass = isRed(card) ? 'red' : 'black';
+            return `
+                <div class="card ${colorClass}">
+                    <div class="corner top-left">${card.value}<br>${card.suit}</div>
+                    <div class="suit">${card.suit}</div>
+                    <div class="corner bottom-right">${card.value}<br>${card.suit}</div>
+                </div>
+            `;
+        }
+
+        function updateDisplay() {
+            // Update deck counts
+            document.getElementById('player-count').textContent = playerDeck.length + (playerCurrentCard ? 1 : 0);
+            document.getElementById('claude-count').textContent = claudeDeck.length + (claudeCurrentCard ? 1 : 0);
+            document.getElementById('player-deck-count').textContent = playerDeck.length;
+            document.getElementById('claude-deck-count').textContent = claudeDeck.length;
+
+            // Update current cards
+            const playerCurrentEl = document.getElementById('player-current');
+            if (playerCurrentCard) {
+                playerCurrentEl.innerHTML = renderCard(playerCurrentCard);
+            } else {
+                playerCurrentEl.innerHTML = '<div class="hidden-card" style="opacity: 0.3;"></div>';
+            }
+
+            const claudeCurrentEl = document.getElementById('claude-current');
+            if (claudeCurrentCard) {
+                claudeCurrentEl.innerHTML = '<div class="hidden-card"></div>';
+            } else {
+                claudeCurrentEl.innerHTML = '<div class="hidden-card" style="opacity: 0.3;"></div>';
+            }
+
+            // Update piles
+            for (let i = 0; i < 3; i++) {
+                const pileEl = document.getElementById(`pile-${i}`);
+                const pileInfoEl = document.getElementById(`pile-info-${i}`);
+
+                if (piles[i].length > 0) {
+                    const topCard = piles[i][piles[i].length - 1];
+                    pileEl.innerHTML = renderCard(topCard);
+                } else {
+                    pileEl.innerHTML = '';
+                }
+
+                // Update pile info
+                let infoHtml = '';
+                if (pileStates[i]) {
+                    const { card, count, target } = pileStates[i];
+                    infoHtml = `<span class="special">${card.value} active</span><br>`;
+                    infoHtml += `<span class="count">${count}/${target} cards</span>`;
+                } else if (piles[i].length > 0) {
+                    infoHtml = `<span class="count">${piles[i].length} card${piles[i].length !== 1 ? 's' : ''}</span>`;
+                }
+                pileInfoEl.innerHTML = infoHtml;
+
+                // Highlight playable piles
+                if (playerCurrentCard && isPlayerTurn && !gameOver) {
+                    pileEl.classList.add('highlight');
+                } else {
+                    pileEl.classList.remove('highlight');
+                }
+            }
+
+            // Check for winner
+            checkWinner();
+        }
+
+        function setMessage(msg, isPush = false) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = msg;
+            messageEl.className = 'message' + (isPush ? ' push' : '');
+        }
+
+        function drawCard() {
+            if (gameOver) return;
+            if (!isPlayerTurn) {
+                setMessage("Wait for Claude to play!");
+                return;
+            }
+            if (playerCurrentCard) {
+                setMessage("Play your current card first!");
+                return;
+            }
+            if (playerDeck.length === 0) {
+                setMessage("Your deck is empty!");
+                return;
+            }
+
+            playerCurrentCard = playerDeck.pop();
+            setMessage("Click a pile to play your card");
+            updateDisplay();
+        }
+
+        function playCard(pileIndex) {
+            if (gameOver) return;
+            if (!isPlayerTurn) return;
+            if (!playerCurrentCard) {
+                setMessage("Draw a card first!");
+                return;
+            }
+
+            const result = processPlay(playerCurrentCard, pileIndex, true);
+            playerCurrentCard = null;
+
+            if (result.push) {
+                setMessage(`PUSH! Claude takes ${result.cardsTaken} cards from pile ${pileIndex + 1}!`, true);
+            } else if (result.selfTake) {
+                setMessage(`You played ${result.card.value} on ${result.onCard.value} - you take ${result.cardsTaken} cards!`);
+            } else {
+                setMessage(`You played ${result.card.value}${result.card.suit} on pile ${pileIndex + 1}`);
+            }
+
+            updateDisplay();
+
+            if (!gameOver) {
+                isPlayerTurn = false;
+                setTimeout(claudeTurn, 1500);
+            }
+        }
+
+        function processPlay(card, pileIndex, isPlayer) {
+            const result = { card, push: false, selfTake: false, cardsTaken: 0 };
+            const pile = piles[pileIndex];
+            const state = pileStates[pileIndex];
+
+            // Check if playing special on special
+            if (isSpecialCard(card) && state) {
+                const onCard = pile[pile.length - 1];
+                result.onCard = onCard;
+
+                // Jack on Jack = other player takes pile
+                if (card.value === 'J' && onCard.value === 'J') {
+                    result.cardsTaken = pile.length + 1;
+                    pile.push(card);
+                    const takenCards = pile.splice(0);
+                    if (isPlayer) {
+                        claudeDeck.unshift(...takenCards);
+                    } else {
+                        playerDeck.unshift(...takenCards);
+                    }
+                    pileStates[pileIndex] = null;
+                    result.push = true;
+                    return result;
+                }
+
+                // Other special on special = you take pile
+                result.cardsTaken = pile.length + 1;
+                pile.push(card);
+                const takenCards = pile.splice(0);
+                if (isPlayer) {
+                    playerDeck.unshift(...takenCards);
+                } else {
+                    claudeDeck.unshift(...takenCards);
+                }
+                pileStates[pileIndex] = null;
+                result.selfTake = true;
+                return result;
+            }
+
+            // Add card to pile
+            pile.push(card);
+
+            // If special card, set new state
+            if (isSpecialCard(card)) {
+                pileStates[pileIndex] = {
+                    card: card,
+                    count: 0,
+                    target: getSpecialTarget(card)
+                };
+                return result;
+            }
+
+            // If there's an active special card state, increment count
+            if (state) {
+                state.count++;
+                if (state.count >= state.target) {
+                    // PUSH! Other player takes pile
+                    result.push = true;
+                    result.cardsTaken = pile.length;
+                    const takenCards = pile.splice(0);
+                    if (isPlayer) {
+                        claudeDeck.unshift(...takenCards);
+                    } else {
+                        playerDeck.unshift(...takenCards);
+                    }
+                    pileStates[pileIndex] = null;
+                }
+            }
+
+            return result;
+        }
+
+        function claudeTurn() {
+            if (gameOver) return;
+
+            // Claude draws a card
+            if (claudeDeck.length === 0) {
+                checkWinner();
+                return;
+            }
+
+            claudeCurrentCard = claudeDeck.pop();
+            updateDisplay();
+            setMessage("Claude is thinking...");
+
+            setTimeout(() => {
+                // Claude's AI: Choose best pile
+                const pileChoice = chooseBestPile(claudeCurrentCard);
+
+                const result = processPlay(claudeCurrentCard, pileChoice, false);
+                const playedCard = claudeCurrentCard;
+                claudeCurrentCard = null;
+
+                if (result.push) {
+                    setMessage(`PUSH! You take ${result.cardsTaken} cards from pile ${pileChoice + 1}!`, true);
+                } else if (result.selfTake) {
+                    setMessage(`Claude played ${result.card.value} on ${result.onCard.value} - Claude takes ${result.cardsTaken} cards!`);
+                } else {
+                    setMessage(`Claude played ${playedCard.value}${playedCard.suit} on pile ${pileChoice + 1}. Your turn!`);
+                }
+
+                updateDisplay();
+
+                if (!gameOver) {
+                    isPlayerTurn = true;
+                    if (playerDeck.length > 0 || playerCurrentCard) {
+                        setMessage(getMessage() + " Draw a card!");
+                    }
+                }
+            }, 1000);
+        }
+
+        function getMessage() {
+            return document.getElementById('message').textContent;
+        }
+
+        function chooseBestPile(card) {
+            // Claude's strategy:
+            // 1. If holding a number card, try to push on active piles
+            // 2. If holding a special card, try to play on empty piles or avoid special-on-special
+            // 3. Avoid creating pushes against self
+
+            let bestPile = 0;
+            let bestScore = -Infinity;
+
+            for (let i = 0; i < 3; i++) {
+                let score = 0;
+                const state = pileStates[i];
+                const pile = piles[i];
+
+                if (isSpecialCard(card)) {
+                    // Special card logic
+                    if (state) {
+                        // Playing special on special
+                        const topCard = pile[pile.length - 1];
+                        if (card.value === 'J' && topCard.value === 'J') {
+                            // Jack on Jack pushes to opponent - good!
+                            score = 100 + pile.length;
+                        } else {
+                            // We'd take the pile - bad
+                            score = -100 - pile.length;
+                        }
+                    } else {
+                        // No active special - safe to play
+                        // Prefer higher target cards (Ace > King > Queen > Jack)
+                        score = getSpecialTarget(card) * 10;
+                        // Prefer empty piles for special cards
+                        if (pile.length === 0) score += 5;
+                    }
+                } else {
+                    // Number card logic
+                    if (state) {
+                        const remaining = state.target - state.count;
+                        if (remaining === 1) {
+                            // This would push opponent - very good!
+                            score = 200 + pile.length;
+                        } else {
+                            // Getting closer to push
+                            score = 50 - remaining * 10;
+                        }
+                    } else {
+                        // No special active - neutral
+                        score = 0;
+                    }
+                }
+
+                // Slight randomness to make it less predictable
+                score += Math.random() * 5;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPile = i;
+                }
+            }
+
+            return bestPile;
+        }
+
+        function checkWinner() {
+            const playerTotal = playerDeck.length + (playerCurrentCard ? 1 : 0);
+            const claudeTotal = claudeDeck.length + (claudeCurrentCard ? 1 : 0);
+
+            if (playerTotal === 0) {
+                gameOver = true;
+                showWinner(true);
+            } else if (claudeTotal === 0) {
+                gameOver = true;
+                showWinner(false);
+            }
+        }
+
+        function showWinner(playerWins) {
+            const overlay = document.getElementById('winner-overlay');
+            const text = document.getElementById('winner-text');
+
+            overlay.className = 'winner-overlay ' + (playerWins ? 'player-wins' : 'claude-wins');
+            text.textContent = playerWins ? '🎉 You Win! 🎉' : '🤖 Claude Wins!';
+            overlay.style.display = 'flex';
+        }
+
+        function newGame() {
+            // Create and shuffle deck
+            const deck = shuffle(createDeck());
+
+            // Split deck
+            playerDeck = deck.slice(0, 26);
+            claudeDeck = deck.slice(26);
+
+            // Reset state
+            playerCurrentCard = null;
+            claudeCurrentCard = null;
+            piles = [[], [], []];
+            pileStates = [null, null, null];
+            isPlayerTurn = true;
+            gameOver = false;
+
+            // Hide winner overlay
+            document.getElementById('winner-overlay').style.display = 'none';
+
+            setMessage("Draw a card to begin!");
+            updateDisplay();
+        }
+
+        function toggleRules() {
+            const panel = document.getElementById('rules-panel');
+            panel.classList.toggle('open');
+        }
+
+        // Initialize game
+        newGame();
+    </script>
+</body>
+</html>
