@@ -144,6 +144,12 @@ header h1 {
     margin-top: 5px;
 }
 
+.build-time {
+    font-size: 0.7rem;
+    opacity: 0.5;
+    margin-top: 2px;
+}
+
 /* Game Info */
 .game-info {
     display: flex;
