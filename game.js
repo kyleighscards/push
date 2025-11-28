@@ -1065,7 +1065,7 @@ class PushGame {
                 if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) {
                     // Jack on Jack = the OTHER player takes pile (PUSH!)
                     this.showPushPopup();
-                    this.setStatus(isPlayer ? "Jack on Jack! Claude takes the pile!" : "Jack on Jack! You take the pile!");
+                    this.setStatus(isPlayer ? "Jack on Jack! Opponent takes the pile!" : "Jack on Jack! You take the pile!");
 
                     setTimeout(() => {
                         // isPlayer played Jack on Jack, so opponent takes pile
@@ -1078,7 +1078,7 @@ class PushGame {
                 // Special on special = YOU take the pile (penalty PUSH!)
                 // (This also handles Jack on Jack when setting is OFF)
                 this.showPushPopup();
-                this.setStatus(isPlayer ? "Special on special! You take the pile!" : "Special on special! Claude takes the pile.");
+                this.setStatus(isPlayer ? "Special on special! You take the pile!" : "Special on special! Opponent takes the pile.");
 
                 setTimeout(() => {
                     // isPlayer played special on special, so isPlayer takes pile
@@ -1101,7 +1101,7 @@ class PushGame {
                 playedBy: playedBy
             };
             if (!isPlayer) {
-                this.setStatus(`Claude played ${card.rank}${this.suitSymbols[card.suit]} - ${this.pushCounts[card.rank]} number cards to push!`);
+                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} - ${this.pushCounts[card.rank]} number cards to push!`);
             }
         } else if (pileState) {
             // Number card played on a pile with an active special card
@@ -1109,12 +1109,12 @@ class PushGame {
 
             if (pileState.count >= pileState.targetCount) {
                 // Push! The player who completed the push forces their OPPONENT to take the pile
-                // isPlayer = true means player completed the push, so opponent (Claude) takes pile
-                // isPlayer = false means Claude completed the push, so player takes pile
+                // isPlayer = true means player completed the push, so opponent takes pile
+                // isPlayer = false means opponent completed the push, so player takes pile
                 this.renderPiles();
                 this.updateUI();
                 this.showPushPopup();
-                this.setStatus(isPlayer ? "PUSH! Claude takes the pile!" : "PUSH! You take the pile!");
+                this.setStatus(isPlayer ? "PUSH! Opponent takes the pile!" : "PUSH! You take the pile!");
 
                 setTimeout(() => {
                     // Third param: isPlayer just played, so pass isPlayer
@@ -1123,10 +1123,10 @@ class PushGame {
                 return;
             } else if (!isPlayer) {
                 const remaining = pileState.targetCount - pileState.count;
-                this.setStatus(`Claude played ${card.rank}${this.suitSymbols[card.suit]} - ${remaining} more to push!`);
+                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} - ${remaining} more to push!`);
             }
         } else if (!isPlayer) {
-            this.setStatus(`Claude played ${card.rank}${this.suitSymbols[card.suit]} on Pile ${pileIndex + 1}`);
+            this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} on Pile ${pileIndex + 1}`);
         }
 
         this.renderPiles();
@@ -1287,7 +1287,7 @@ class PushGame {
             message.style.color = '#f1c40f';
             animation.textContent = "🏆";
         } else {
-            message.textContent = "Claude Wins!";
+            message.textContent = "Opponent Wins!";
             message.style.color = '#e74c3c';
             animation.textContent = "🤖";
         }
@@ -1400,7 +1400,7 @@ class PushGame {
             // Player just finished, opponent's turn
             this.currentTurnPlayer = 'opponent';
             this.isPlayerTurn = false;
-            this.setStatus("Claude is thinking...");
+            this.setStatus("Opponent is thinking...");
             setTimeout(() => this.opponentTurn(), 300);
         } else {
             // Opponent just finished, player's turn
@@ -1465,7 +1465,7 @@ class PushGame {
                 // Show pile state info
                 if (pileState) {
                     const remaining = pileState.targetCount - pileState.count;
-                    const owner = pileState.playedBy === 'player' ? 'Your' : "Claude's";
+                    const owner = pileState.playedBy === 'player' ? 'Your' : "Opponent's";
                     infoContainer.textContent = `${owner} ${pileState.specialCard}: ${remaining} to push`;
                 } else {
                     infoContainer.textContent = `${pile.length} cards`;

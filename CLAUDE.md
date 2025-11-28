@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Push! is a card game invented by a young girl. This project is a web-based implementation where players can play against an AI opponent (Claude).
+Push! is a card game invented by a young girl. This project is a web-based implementation where players can play against an AI opponent.
 
 ## Game Rules
 
@@ -30,7 +30,7 @@ Special cards (J, Q, K, A) trigger a "push" countdown. When a special card is pl
 
 **Important**: The count is the TOTAL number cards played by BOTH players combined, not per-player.
 
-**When the push completes**: The player who plays the final number card (completes the push) forces their **OPPONENT** to take the pile. So if YOU complete the push, CLAUDE takes the pile. If CLAUDE completes the push, YOU take the pile. Either way, turns then alternate to the other player.
+**When the push completes**: The player who plays the final number card (completes the push) forces their **OPPONENT** to take the pile. So if YOU complete the push, the Opponent takes the pile. If the Opponent completes the push, YOU take the pile. Either way, turns then alternate to the other player.
 
 ### Special Card on Special Card Rules (All trigger PUSH! animation)
 1. Playing a special card directly on another special card = YOU take the pile (penalty)
@@ -127,7 +127,7 @@ The game uses a simple turn alternation system:
 - This ensures turns ALWAYS alternate regardless of push outcomes or pile takes
 
 ### Example Turn Sequence
-1. Player plays Jack on Pile 1 → turn switches to Claude
-2. Claude plays Queen on Pile 1 (special on special) → Claude takes pile → turn switches to Player
-3. Player plays next card → turn switches to Claude
+1. Player plays Jack on Pile 1 → turn switches to Opponent
+2. Opponent plays Queen on Pile 1 (special on special) → Opponent takes pile → turn switches to Player
+3. Player plays next card → turn switches to Opponent
 4. And so on...
