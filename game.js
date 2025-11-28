@@ -638,6 +638,506 @@ const DEFAULT_SUIT_SYMBOLS = {
     spades: '♠'
 };
 
+// ===== FIREBASE CONFIGURATION =====
+const firebaseConfig = {
+    apiKey: "AIzaSyA973Q0OwUjbAA0mtBdz626NgmVSTo7Gh4",
+    authDomain: "push-card-game.firebaseapp.com",
+    databaseURL: "https://push-card-game-default-rtdb.firebaseio.com",
+    projectId: "push-card-game",
+    storageBucket: "push-card-game.firebasestorage.app",
+    messagingSenderId: "348636248250",
+    appId: "1:348636248250:web:bc74884a027f2898e8ea83"
+};
+
+// Initialize Firebase
+let firebaseApp = null;
+let database = null;
+
+try {
+    firebaseApp = firebase.initializeApp(firebaseConfig);
+    database = firebase.database();
+} catch (e) {
+    console.log('Firebase initialization failed:', e);
+}
+
+// ===== COOKIE HELPERS =====
+function setCookie(name, value, days = 365) {
+    const maxAge = days * 24 * 60 * 60;
+    document.cookie = `${name}=${encodeURIComponent(value)};max-age=${maxAge};path=/;SameSite=Lax`;
+}
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+}
+
+function deleteCookie(name) {
+    document.cookie = `${name}=;max-age=0;path=/`;
+}
+
+// ===== MULTIPLAYER MANAGER =====
+class MultiplayerManager {
+    constructor(game) {
+        this.game = game;
+        this.userId = null;
+        this.username = null;
+        this.currentGameId = null;
+        this.isMultiplayer = false;
+        this.isHost = false;
+        this.opponentId = null;
+        this.opponentUsername = null;
+        this.listeners = [];
+        this.inviteTimeout = null;
+        this.pendingInviteId = null;
+
+        this.initializeUser();
+    }
+
+    initializeUser() {
+        // Check for existing user in cookies
+        const savedUserId = getCookie('pushUserId');
+        const savedUsername = getCookie('pushUsername');
+
+        if (savedUserId && savedUsername) {
+            this.userId = savedUserId;
+            this.username = savedUsername;
+            this.goOnline();
+        }
+    }
+
+    hasUsername() {
+        return this.username !== null;
+    }
+
+    async setUsername(username) {
+        // Generate unique user ID if not exists
+        if (!this.userId) {
+            this.userId = database.ref('users').push().key;
+        }
+
+        this.username = username;
+
+        // Save to cookies
+        setCookie('pushUserId', this.userId);
+        setCookie('pushUsername', this.username);
+
+        // Save to Firebase
+        await this.goOnline();
+
+        return true;
+    }
+
+    async goOnline() {
+        if (!database || !this.userId) return;
+
+        const userRef = database.ref(`users/${this.userId}`);
+
+        // Set user data
+        await userRef.set({
+            username: this.username,
+            online: true,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP,
+            inGame: null
+        });
+
+        // Set up disconnect handler
+        userRef.onDisconnect().update({
+            online: false,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        // Listen for invites
+        this.listenForInvites();
+    }
+
+    async goOffline() {
+        if (!database || !this.userId) return;
+
+        await database.ref(`users/${this.userId}`).update({
+            online: false,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+
+    listenForInvites() {
+        if (!database || !this.userId) return;
+
+        const invitesRef = database.ref('invites').orderByChild('to').equalTo(this.userId);
+
+        invitesRef.on('child_added', (snapshot) => {
+            const invite = snapshot.val();
+            if (invite.status === 'pending') {
+                this.showInvite(snapshot.key, invite);
+            }
+        });
+
+        this.listeners.push({ ref: invitesRef, event: 'child_added' });
+    }
+
+    async showInvite(inviteId, invite) {
+        // Get inviter's username
+        const inviterSnap = await database.ref(`users/${invite.from}/username`).once('value');
+        const inviterName = inviterSnap.val() || 'Someone';
+
+        document.getElementById('invite-message').textContent = `${inviterName} wants to play!`;
+        document.getElementById('invite-modal').classList.add('show');
+
+        this.pendingInviteId = inviteId;
+
+        // Start countdown
+        let timeLeft = 30;
+        const timerEl = document.getElementById('invite-timer');
+        timerEl.textContent = `Expires in ${timeLeft}s`;
+
+        this.inviteTimeout = setInterval(() => {
+            timeLeft--;
+            timerEl.textContent = `Expires in ${timeLeft}s`;
+
+            if (timeLeft <= 0) {
+                this.declineInvite();
+            }
+        }, 1000);
+    }
+
+    async acceptInvite() {
+        if (!this.pendingInviteId) return;
+
+        clearInterval(this.inviteTimeout);
+        document.getElementById('invite-modal').classList.remove('show');
+
+        const inviteSnap = await database.ref(`invites/${this.pendingInviteId}`).once('value');
+        const invite = inviteSnap.val();
+
+        if (!invite || invite.status !== 'pending') {
+            alert('Invite expired or cancelled');
+            return;
+        }
+
+        // Update invite status
+        await database.ref(`invites/${this.pendingInviteId}`).update({
+            status: 'accepted'
+        });
+
+        // Join the game
+        this.opponentId = invite.from;
+        const opponentSnap = await database.ref(`users/${invite.from}/username`).once('value');
+        this.opponentUsername = opponentSnap.val();
+
+        // Wait for host to create game
+        this.waitForGame(invite.from);
+    }
+
+    async declineInvite() {
+        if (!this.pendingInviteId) return;
+
+        clearInterval(this.inviteTimeout);
+        document.getElementById('invite-modal').classList.remove('show');
+
+        await database.ref(`invites/${this.pendingInviteId}`).update({
+            status: 'declined'
+        });
+
+        this.pendingInviteId = null;
+    }
+
+    waitForGame(hostId) {
+        // Listen for game creation by host
+        const gamesRef = database.ref('games').orderByChild('player2').equalTo(this.userId);
+
+        gamesRef.on('child_added', (snapshot) => {
+            const game = snapshot.val();
+            if (game.player1 === hostId && game.status === 'playing') {
+                this.joinGame(snapshot.key, game);
+                gamesRef.off();
+            }
+        });
+    }
+
+    async sendInvite(targetUserId) {
+        if (!database || !this.userId) return;
+
+        // Get target username
+        const targetSnap = await database.ref(`users/${targetUserId}/username`).once('value');
+        const targetName = targetSnap.val();
+
+        // Create invite
+        const inviteRef = database.ref('invites').push();
+        await inviteRef.set({
+            from: this.userId,
+            to: targetUserId,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            status: 'pending'
+        });
+
+        // Show waiting modal
+        document.getElementById('waiting-message').textContent = `Waiting for ${targetName} to accept...`;
+        document.getElementById('waiting-modal').classList.add('show');
+        document.getElementById('lobby-modal').classList.remove('show');
+
+        this.pendingInviteId = inviteRef.key;
+        this.opponentId = targetUserId;
+        this.opponentUsername = targetName;
+
+        // Listen for response
+        inviteRef.on('value', async (snapshot) => {
+            const invite = snapshot.val();
+            if (!invite) return;
+
+            if (invite.status === 'accepted') {
+                inviteRef.off();
+                document.getElementById('waiting-modal').classList.remove('show');
+                await this.createGame();
+            } else if (invite.status === 'declined') {
+                inviteRef.off();
+                document.getElementById('waiting-modal').classList.remove('show');
+                alert(`${targetName} declined the invite`);
+                this.opponentId = null;
+                this.opponentUsername = null;
+            }
+        });
+
+        // Auto-cancel after 30 seconds
+        setTimeout(async () => {
+            const snap = await inviteRef.once('value');
+            if (snap.val() && snap.val().status === 'pending') {
+                await inviteRef.remove();
+                document.getElementById('waiting-modal').classList.remove('show');
+                alert('Invite expired');
+            }
+        }, 30000);
+    }
+
+    cancelInvite() {
+        if (this.pendingInviteId) {
+            database.ref(`invites/${this.pendingInviteId}`).remove();
+            this.pendingInviteId = null;
+        }
+        document.getElementById('waiting-modal').classList.remove('show');
+        this.opponentId = null;
+        this.opponentUsername = null;
+    }
+
+    async createGame() {
+        this.isHost = true;
+        this.isMultiplayer = true;
+
+        // Create shuffled deck
+        const deck = this.game.createDeck();
+        this.shuffleArray(deck);
+
+        // Split deck
+        const player1Deck = deck.slice(0, 26);
+        const player2Deck = deck.slice(26);
+
+        // Create game in Firebase
+        const gameRef = database.ref('games').push();
+        this.currentGameId = gameRef.key;
+
+        const pileCount = this.game.settings.pileCount;
+
+        await gameRef.set({
+            player1: this.userId,
+            player2: this.opponentId,
+            player1Username: this.username,
+            player2Username: this.opponentUsername,
+            status: 'playing',
+            currentTurn: 'player1',
+            player1Deck: player1Deck,
+            player2Deck: player2Deck,
+            piles: Array(pileCount).fill([]),
+            pileStates: Array(pileCount).fill(null),
+            settings: this.game.settings,
+            lastMove: null,
+            messages: null,
+            winner: null,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        // Update user status
+        await database.ref(`users/${this.userId}`).update({ inGame: this.currentGameId });
+        await database.ref(`users/${this.opponentId}`).update({ inGame: this.currentGameId });
+
+        // Start listening to game
+        this.startGameListeners();
+
+        // Initialize local game state
+        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true);
+    }
+
+    async joinGame(gameId, gameData) {
+        this.currentGameId = gameId;
+        this.isHost = false;
+        this.isMultiplayer = true;
+        this.opponentId = gameData.player1;
+        this.opponentUsername = gameData.player1Username;
+
+        // Start listening to game
+        this.startGameListeners();
+
+        // Initialize local game state (player2 deck)
+        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
+    }
+
+    startGameListeners() {
+        if (!this.currentGameId) return;
+
+        const gameRef = database.ref(`games/${this.currentGameId}`);
+
+        // Listen for moves
+        gameRef.child('lastMove').on('value', (snapshot) => {
+            const move = snapshot.val();
+            if (move && move.playerId !== this.userId) {
+                this.game.processRemoteMove(move);
+            }
+        });
+
+        // Listen for messages
+        gameRef.child('messages').on('child_added', (snapshot) => {
+            const msg = snapshot.val();
+            if (msg && msg.from !== this.userId) {
+                this.showToast(this.opponentUsername, msg.text);
+            }
+        });
+
+        // Listen for game end
+        gameRef.child('winner').on('value', (snapshot) => {
+            const winner = snapshot.val();
+            if (winner) {
+                this.game.handleMultiplayerWin(winner === this.getPlayerRole());
+            }
+        });
+
+        // Show message bar
+        document.getElementById('message-bar').style.display = 'block';
+    }
+
+    getPlayerRole() {
+        return this.isHost ? 'player1' : 'player2';
+    }
+
+    async sendMove(card, pileIndex) {
+        if (!this.currentGameId) return;
+
+        const gameRef = database.ref(`games/${this.currentGameId}`);
+
+        await gameRef.child('lastMove').set({
+            playerId: this.userId,
+            playerRole: this.getPlayerRole(),
+            card: card,
+            pile: pileIndex,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        // Switch turn
+        const nextTurn = this.isHost ? 'player2' : 'player1';
+        await gameRef.child('currentTurn').set(nextTurn);
+    }
+
+    async updateGameState(piles, pileStates, playerDeck, opponentDeck) {
+        if (!this.currentGameId) return;
+
+        const gameRef = database.ref(`games/${this.currentGameId}`);
+        const playerRole = this.getPlayerRole();
+
+        const updates = {
+            piles: piles,
+            pileStates: pileStates
+        };
+
+        if (playerRole === 'player1') {
+            updates.player1Deck = playerDeck;
+            updates.player2Deck = opponentDeck;
+        } else {
+            updates.player2Deck = playerDeck;
+            updates.player1Deck = opponentDeck;
+        }
+
+        await gameRef.update(updates);
+    }
+
+    async sendMessage(text) {
+        if (!this.currentGameId) return;
+
+        await database.ref(`games/${this.currentGameId}/messages`).push({
+            from: this.userId,
+            text: text,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+
+    showToast(sender, message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `
+            <div class="toast-sender">${sender}</div>
+            <div class="toast-message">${message}</div>
+        `;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    async setWinner(isPlayerWinner) {
+        if (!this.currentGameId) return;
+
+        const winner = isPlayerWinner ? this.getPlayerRole() : (this.isHost ? 'player2' : 'player1');
+        await database.ref(`games/${this.currentGameId}/winner`).set(winner);
+    }
+
+    async endGame() {
+        if (!this.currentGameId) return;
+
+        // Update user status
+        if (this.userId) {
+            await database.ref(`users/${this.userId}`).update({ inGame: null });
+        }
+
+        // Clean up listeners
+        database.ref(`games/${this.currentGameId}`).off();
+
+        // Hide message bar
+        document.getElementById('message-bar').style.display = 'none';
+
+        this.currentGameId = null;
+        this.isMultiplayer = false;
+        this.isHost = false;
+        this.opponentId = null;
+        this.opponentUsername = null;
+    }
+
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    async getOnlinePlayers() {
+        if (!database) return [];
+
+        const snapshot = await database.ref('users')
+            .orderByChild('online')
+            .equalTo(true)
+            .once('value');
+
+        const players = [];
+        snapshot.forEach((child) => {
+            if (child.key !== this.userId) {
+                players.push({
+                    id: child.key,
+                    ...child.val()
+                });
+            }
+        });
+
+        return players;
+    }
+}
+
 class PushGame {
     constructor() {
         this.suits = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -674,9 +1174,218 @@ class PushGame {
         this.currentTheme = { set: 'color', id: 'forest-deep' };
         this.themeSuggestionShown = false;
 
+        // Multiplayer state
+        this.multiplayer = null;
+        this.isMultiplayerGame = false;
+        this.isMyTurn = true;
+
         this.loadSettings();
         this.loadTheme();
         this.initializeEventListeners();
+        this.initializeMultiplayer();
+    }
+
+    initializeMultiplayer() {
+        this.multiplayer = new MultiplayerManager(this);
+        this.initializeMultiplayerUI();
+    }
+
+    initializeMultiplayerUI() {
+        // Username modal
+        document.getElementById('username-submit').addEventListener('click', () => this.submitUsername());
+        document.getElementById('username-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.submitUsername();
+        });
+
+        // Mode selection
+        document.getElementById('play-ai-btn').addEventListener('click', () => {
+            document.getElementById('mode-modal').classList.remove('show');
+            this.startNewGame();
+        });
+
+        document.getElementById('play-friend-btn').addEventListener('click', () => {
+            document.getElementById('mode-modal').classList.remove('show');
+            this.showLobby();
+        });
+
+        // Lobby
+        document.getElementById('close-lobby').addEventListener('click', () => {
+            document.getElementById('lobby-modal').classList.remove('show');
+        });
+
+        // Invite responses
+        document.getElementById('accept-invite-btn').addEventListener('click', () => {
+            this.multiplayer.acceptInvite();
+        });
+
+        document.getElementById('decline-invite-btn').addEventListener('click', () => {
+            this.multiplayer.declineInvite();
+        });
+
+        // Cancel invite
+        document.getElementById('cancel-invite-btn').addEventListener('click', () => {
+            this.multiplayer.cancelInvite();
+        });
+
+        // Message sending
+        document.getElementById('message-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                this.multiplayer.sendMessage(e.target.value);
+                e.target.value = '';
+            }
+        });
+    }
+
+    async submitUsername() {
+        const input = document.getElementById('username-input');
+        const error = document.getElementById('username-error');
+        const username = input.value.trim();
+
+        // Validate
+        if (username.length < 3) {
+            error.textContent = 'Username must be at least 3 characters';
+            return;
+        }
+
+        if (username.length > 15) {
+            error.textContent = 'Username must be 15 characters or less';
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            error.textContent = 'Only letters, numbers, and underscore allowed';
+            return;
+        }
+
+        error.textContent = '';
+
+        try {
+            await this.multiplayer.setUsername(username);
+            document.getElementById('username-modal').classList.remove('show');
+        } catch (e) {
+            error.textContent = 'Error saving username. Try again.';
+        }
+    }
+
+    async showLobby() {
+        document.getElementById('lobby-modal').classList.add('show');
+        document.getElementById('lobby-status').textContent = 'Looking for players...';
+        document.getElementById('online-players').innerHTML = '';
+
+        const players = await this.multiplayer.getOnlinePlayers();
+
+        if (players.length === 0) {
+            document.getElementById('online-players').innerHTML = '<div class="no-players">No other players online right now</div>';
+            document.getElementById('lobby-status').textContent = 'Share the link to invite friends!';
+        } else {
+            document.getElementById('lobby-status').textContent = `${players.length} player${players.length > 1 ? 's' : ''} online`;
+            const html = players.map(p => `
+                <div class="player-item ${p.inGame ? 'in-game' : ''}" data-userid="${p.id}">
+                    <div class="player-status-dot"></div>
+                    <span class="player-username">${p.username}</span>
+                    <span class="player-status-text">${p.inGame ? 'In game' : 'Available'}</span>
+                </div>
+            `).join('');
+            document.getElementById('online-players').innerHTML = html;
+
+            // Add click handlers
+            document.querySelectorAll('.player-item:not(.in-game)').forEach(el => {
+                el.addEventListener('click', () => {
+                    const userId = el.dataset.userid;
+                    this.multiplayer.sendInvite(userId);
+                });
+            });
+        }
+    }
+
+    startMultiplayerGame(myDeck, opponentName, isHost) {
+        this.isMultiplayerGame = true;
+        this.isMyTurn = isHost; // Host (player1) goes first
+
+        // Set up decks
+        this.playerDeck = [...myDeck];
+        this.opponentDeck = Array(26 - myDeck.length + 26).fill(null); // Placeholder for opponent deck size
+
+        // Initialize piles
+        const pileCount = this.settings.pileCount;
+        this.piles = Array.from({ length: pileCount }, () => []);
+        this.pileStates = Array.from({ length: pileCount }, () => null);
+
+        this.currentCard = null;
+        this.gameActive = true;
+
+        // Update opponent name display
+        document.querySelector('.player-info.opponent .player-name').innerHTML =
+            `<span class="opponent-username">${opponentName}</span>'s Cards`;
+
+        this.renderPilesHTML();
+        this.renderPiles();
+        this.updateCounts();
+        this.setStatus(this.isMyTurn ? 'Your turn!' : `${opponentName}'s turn...`);
+
+        if (this.isMyTurn) {
+            this.drawCard();
+        }
+    }
+
+    processRemoteMove(move) {
+        if (!this.isMultiplayerGame || this.isMyTurn) return;
+
+        const card = move.card;
+        const pileIndex = move.pile;
+
+        // Animate the opponent's card
+        this.animateCardToPlay(card, pileIndex, 'opponent', () => {
+            this.processCardPlay(card, pileIndex, 'opponent');
+        });
+    }
+
+    handleMultiplayerWin(didIWin) {
+        this.gameActive = false;
+
+        const message = didIWin ? 'You Win!' : 'You Lose!';
+        document.getElementById('win-message').textContent = message;
+        document.getElementById('win-modal').classList.add('show');
+
+        // Create celebration or commiseration animation
+        const animationEl = document.getElementById('win-animation');
+        animationEl.innerHTML = '';
+
+        const symbols = didIWin ? ['🎉', '🏆', '⭐', '🎊'] : ['😢', '💔', '🙁', '😞'];
+        for (let i = 0; i < 20; i++) {
+            const span = document.createElement('span');
+            span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            span.style.cssText = `
+                position: absolute;
+                font-size: ${Math.random() * 20 + 20}px;
+                left: ${Math.random() * 100}%;
+                animation: float ${Math.random() * 2 + 2}s ease-in-out infinite;
+                animation-delay: ${Math.random() * 2}s;
+            `;
+            animationEl.appendChild(span);
+        }
+
+        // End the multiplayer game
+        this.multiplayer.endGame();
+    }
+
+    showModeSelection() {
+        // Close win modal if open
+        document.getElementById('win-modal').classList.remove('show');
+
+        // End any existing multiplayer game
+        if (this.isMultiplayerGame && this.multiplayer) {
+            this.multiplayer.endGame();
+        }
+
+        // Reset multiplayer state
+        this.isMultiplayerGame = false;
+
+        // Reset opponent name display
+        document.querySelector('.player-info.opponent .player-name').textContent = "Opponent's Cards";
+
+        // Show mode selection
+        document.getElementById('mode-modal').classList.add('show');
     }
 
     loadSettings() {
@@ -950,8 +1659,8 @@ class PushGame {
     }
 
     initializeEventListeners() {
-        document.getElementById('new-game-btn').addEventListener('click', () => this.startNewGame());
-        document.getElementById('play-again-btn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('new-game-btn').addEventListener('click', () => this.showModeSelection());
+        document.getElementById('play-again-btn').addEventListener('click', () => this.showModeSelection());
         document.getElementById('rules-btn').addEventListener('click', () => this.showRules());
         document.getElementById('close-rules').addEventListener('click', () => this.hideRules());
 
@@ -1094,7 +1803,12 @@ class PushGame {
     }
 
     playCardOnPile(pileIndex) {
-        if (!this.gameActive || !this.isPlayerTurn || !this.currentCard) return;
+        // In multiplayer, check if it's my turn
+        if (this.isMultiplayerGame) {
+            if (!this.gameActive || !this.isMyTurn || !this.currentCard) return;
+        } else {
+            if (!this.gameActive || !this.isPlayerTurn || !this.currentCard) return;
+        }
 
         const card = this.currentCard;
         this.currentCard = null;
@@ -1102,6 +1816,12 @@ class PushGame {
 
         // Mark that player is currently playing
         this.currentTurnPlayer = 'player';
+
+        // In multiplayer, send move to Firebase
+        if (this.isMultiplayerGame && this.multiplayer) {
+            this.multiplayer.sendMove(card, pileIndex);
+            this.isMyTurn = false;
+        }
 
         // Animate card moving to pile, then process the play
         this.animateCardToPlay(card, pileIndex, 'player', () => {
@@ -1674,17 +2394,34 @@ class PushGame {
 
     // Switch to the other player's turn
     switchTurn() {
-        if (this.currentTurnPlayer === 'player') {
-            // Player just finished, opponent's turn
-            this.currentTurnPlayer = 'opponent';
-            this.isPlayerTurn = false;
-            this.setStatus("Opponent is thinking...");
-            setTimeout(() => this.opponentTurn(), 300);
+        // In multiplayer, handle turn switching differently
+        if (this.isMultiplayerGame) {
+            if (this.currentTurnPlayer === 'player') {
+                // I just finished, opponent's turn
+                this.currentTurnPlayer = 'opponent';
+                this.isMyTurn = false;
+                this.setStatus(`${this.multiplayer.opponentUsername}'s turn...`);
+                // Don't call opponentTurn() - wait for Firebase update
+            } else {
+                // Opponent just finished, my turn
+                this.currentTurnPlayer = 'player';
+                this.isMyTurn = true;
+                setTimeout(() => this.drawCard(), 300);
+            }
         } else {
-            // Opponent just finished, player's turn
-            this.currentTurnPlayer = 'player';
-            this.isPlayerTurn = true;
-            setTimeout(() => this.drawCard(), 300);
+            // AI mode - original logic
+            if (this.currentTurnPlayer === 'player') {
+                // Player just finished, opponent's turn
+                this.currentTurnPlayer = 'opponent';
+                this.isPlayerTurn = false;
+                this.setStatus("Opponent is thinking...");
+                setTimeout(() => this.opponentTurn(), 300);
+            } else {
+                // Opponent just finished, player's turn
+                this.currentTurnPlayer = 'player';
+                this.isPlayerTurn = true;
+                setTimeout(() => this.drawCard(), 300);
+            }
         }
     }
 
@@ -1810,14 +2547,35 @@ class PushGame {
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new PushGame();
 
-    // Handle loading modal - auto fade after 3 seconds
+    // Check if user needs to set username
+    const hasUsername = window.game.multiplayer.hasUsername();
+
+    if (!hasUsername) {
+        // Show username modal first
+        document.getElementById('username-modal').classList.add('show');
+    }
+
+    // Handle loading modal - auto fade after 1.75 seconds
     const loadingModal = document.getElementById('loading-modal');
     setTimeout(() => {
         loadingModal.classList.add('fading');
         setTimeout(() => {
             loadingModal.classList.remove('show');
             loadingModal.classList.remove('fading');
-            window.game.startNewGame();
+
+            // If user already has username, show mode selection
+            if (hasUsername) {
+                document.getElementById('mode-modal').classList.add('show');
+            }
         }, 1000); // 1 second fade duration
     }, 1750); // 1.75 second delay before fade
+
+    // When username is submitted, show mode selection
+    const originalSubmit = window.game.submitUsername.bind(window.game);
+    window.game.submitUsername = async function() {
+        await originalSubmit();
+        if (window.game.multiplayer.hasUsername()) {
+            document.getElementById('mode-modal').classList.add('show');
+        }
+    };
 });

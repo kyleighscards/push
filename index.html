@@ -5,8 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Push! - The Card Game</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
+    <!-- Username Modal (shown on first visit) -->
+    <div class="modal" id="username-modal">
+        <div class="modal-content username-content">
+            <h2>Welcome to Push!</h2>
+            <p>Enter a username to play with friends:</p>
+            <input type="text" id="username-input" class="username-input" placeholder="Your username" maxlength="15" autocomplete="off">
+            <p class="username-error" id="username-error"></p>
+            <button class="btn" id="username-submit">Let's Play!</button>
+        </div>
+    </div>
+
     <!-- Loading Modal -->
     <div class="modal show" id="loading-modal">
         <div class="modal-content loading-content">
@@ -194,6 +208,74 @@
                 </div>
             </div>
         </div>
+
+        <!-- Game Mode Modal -->
+        <div class="modal" id="mode-modal">
+            <div class="modal-content mode-content">
+                <h2>Choose Game Mode</h2>
+                <div class="mode-buttons">
+                    <button class="btn mode-btn" id="play-ai-btn">
+                        <span class="mode-icon">🤖</span>
+                        <span class="mode-title">Play vs AI</span>
+                        <span class="mode-desc">Challenge the computer</span>
+                    </button>
+                    <button class="btn mode-btn" id="play-friend-btn">
+                        <span class="mode-icon">👥</span>
+                        <span class="mode-title">Play vs Friend</span>
+                        <span class="mode-desc">Play with someone online</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lobby Modal -->
+        <div class="modal" id="lobby-modal">
+            <div class="modal-content lobby-content">
+                <span class="close-btn" id="close-lobby">&times;</span>
+                <h2>Online Players</h2>
+                <p class="lobby-status" id="lobby-status">Looking for players...</p>
+                <div class="online-players" id="online-players">
+                    <!-- Players rendered by JS -->
+                </div>
+                <p class="lobby-help">Click a player to invite them to play!</p>
+            </div>
+        </div>
+
+        <!-- Invite Modal -->
+        <div class="modal" id="invite-modal">
+            <div class="modal-content invite-content">
+                <h2>Game Invite!</h2>
+                <p id="invite-message">Someone wants to play!</p>
+                <div class="invite-buttons">
+                    <button class="btn invite-accept" id="accept-invite-btn">Accept</button>
+                    <button class="btn invite-decline" id="decline-invite-btn">Decline</button>
+                </div>
+                <p class="invite-timer" id="invite-timer">Expires in 30s</p>
+            </div>
+        </div>
+
+        <!-- Waiting Modal -->
+        <div class="modal" id="waiting-modal">
+            <div class="modal-content waiting-content">
+                <h2>Waiting for Response...</h2>
+                <p id="waiting-message">Waiting for player to accept...</p>
+                <div class="waiting-spinner"></div>
+                <button class="btn" id="cancel-invite-btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Message Bar (for multiplayer) -->
+        <div class="message-bar" id="message-bar" style="display: none;">
+            <select id="message-select" class="message-select">
+                <option value="">Send a message...</option>
+                <option value="Great move!">Great move!</option>
+                <option value="Hi!!!">Hi!!!</option>
+                <option value="Watch out!">Watch out!</option>
+            </select>
+        </div>
+
+        <!-- Toast Container -->
+        <div class="toast-container" id="toast-container"></div>
     </div>
 
     <script src="game.js"></script>

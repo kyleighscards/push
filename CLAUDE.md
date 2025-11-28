@@ -95,8 +95,17 @@ On startup, the game suggests seasonal themes:
 ```
 index.html  - Game layout and structure
 styles.css  - Visual styling, card designs, animations
-game.js     - Game logic, AI opponent, state management
+game.js     - Game logic, AI opponent, multiplayer, state management
 ```
+
+### External Dependencies
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| Firebase App | 9.23.0 (compat) | Firebase core SDK |
+| Firebase Database | 9.23.0 (compat) | Realtime Database for multiplayer |
+
+Both are loaded via CDN from `www.gstatic.com/firebasejs/`.
 
 ## Development
 
@@ -120,9 +129,13 @@ See [DEPLOY.md](DEPLOY.md) for instructions on deploying to GitHub Pages.
   - When Jack is played on Jack (reverse penalty)
 - **Card-by-card flying animation** when taking piles (with incrementing card count) - used for ALL push scenarios
 - **Strictly alternating turns** - tracks `currentTurnPlayer` and uses `switchTurn()` method after ANY action
-- AI opponent with basic strategy
+- AI opponent with three difficulty levels (Kid, Fun, Expert)
 - Visual card designs with suit symbols
 - Responsive layout
+- **2-Player Multiplayer** - Real-time play with friends via Firebase
+- **Username system** - Persistent username stored in cookies
+- **Online lobby** - See and invite online players
+- **Quick messages** - Send preset messages during multiplayer games
 
 ## Skill Level
 
@@ -169,6 +182,57 @@ Applies rules in priority order. The rule number is shown in the status message.
 - Rule #3 is defensive: when all piles are dangerous (2 away from pushing), minimize loss
 - Rule #5 considers card count: AI plays more aggressively when behind, more conservatively when ahead
 
+## 2-Player Multiplayer Mode
+
+Real-time 2-player mode using Firebase Realtime Database (100% free tier).
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Username System | Unique username on first visit, stored in cookies (1 year) |
+| Online Lobby | See other online players, click to invite |
+| Real-time Gameplay | Moves sync instantly between players |
+| Quick Messages | Preset messages: "Great move!", "Hi!!!", "Watch out!" |
+| Presence System | Online/offline status tracked automatically |
+
+### Game Flow
+
+1. **First Visit**: Username modal prompts for unique name (3-15 chars, alphanumeric + underscore)
+2. **Mode Selection**: "Play vs AI" or "Play vs Friend"
+3. **Lobby** (Play vs Friend): Shows online players not currently in games
+4. **Invite**: Click player to invite; they have 30 seconds to accept/decline
+5. **Game Start**: Host creates game, shuffles deck, assigns cards
+6. **Gameplay**: Moves sync via Firebase; turns alternate
+7. **Messages**: Dropdown at bottom sends toast notifications to opponent
+8. **Game End**: Winner modal shown to both players
+
+### Firebase Structure
+
+```
+push-game/
+├── users/{userId}/
+│   ├── username, online, lastSeen, inGame
+├── games/{gameId}/
+│   ├── player1, player2, status, currentTurn
+│   ├── player1Deck, player2Deck, piles, pileStates
+│   ├── lastMove, messages, winner
+└── invites/{inviteId}/
+    ├── from, to, timestamp, status
+```
+
+### Implementation Classes
+
+- **MultiplayerManager**: Handles Firebase connection, user presence, invites, game creation, move syncing, messaging
+- **PushGame**: Extended with `isMultiplayerGame`, `isMyTurn`, `startMultiplayerGame()`, `processRemoteMove()`, `handleMultiplayerWin()`
+
+### Cookie Storage
+
+| Cookie | Purpose | Expiry |
+|--------|---------|--------|
+| `pushUserId` | Firebase user ID | 1 year |
+| `pushUsername` | Display name | 1 year |
+
 ## Implementation Details
 
 ### Turn Tracking
@@ -176,6 +240,7 @@ The game uses a simple turn alternation system:
 - `currentTurnPlayer` variable tracks whose turn it is ('player' or 'opponent')
 - `switchTurn()` method switches to the other player after any action completes
 - This ensures turns ALWAYS alternate regardless of push outcomes or pile takes
+- In multiplayer mode, turns wait for Firebase updates rather than calling `opponentTurn()`
 
 ### Example Turn Sequence
 1. Player plays Jack on Pile 1 → turn switches to Opponent
