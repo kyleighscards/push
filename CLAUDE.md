@@ -118,6 +118,51 @@ Static web project - open `index.html` directly in a browser. No build system re
 - Visual card designs with suit symbols
 - Responsive layout
 
+## Skill Level
+
+A setting in the Settings modal with three AI difficulty options. Default: Expert.
+
+| Setting | Options | Default | Description |
+|---------|---------|---------|-------------|
+| Skill Level | Kid, Fun, Expert | Expert | Controls AI opponent difficulty |
+
+### Kid Skill
+Plays cards completely at random on any pile.
+
+### Fun Skill
+Uses basic strategy (the original AI logic):
+- Avoids playing special cards on special cards
+- Tries to complete pushes when possible
+- Plays Jack on Jack when advantageous
+
+### Expert Skill
+Applies rules in priority order. The rule number is shown in the status message.
+
+**Scoring System** (used for pile evaluation):
+| Card | Points |
+|------|--------|
+| Jack | 10 |
+| King | 5 |
+| Ace | 2 |
+| Queen | 2 |
+| Number (2-10) | 1 |
+
+**Rules (evaluated in order):**
+
+| Rule | Condition | Action |
+|------|-----------|--------|
+| #1 | Jack-on-Jack setting ON, AI has Jack, pile has Jack on top | Play Jack on Jack |
+| #2 | AI has number card, can complete push (1 card needed) | Push pile with highest score |
+| #3 | AI has number card AND all piles need exactly 2 cards, OR AI has Jack AND pile has number on top | Play on pile with lowest score |
+| #4 | AI has number card, no other rule applies | Play on pile with most cards |
+| #5 | AI has special card, no other rule applies | If losing: reset largest pile. If winning: use empty pile or reset smallest |
+| #6 | Fallback | Use Fun Skill logic |
+
+**Rule Details:**
+- "Reset" means playing a special card on top of a number card to start a new push sequence
+- Rule #3 is defensive: when all piles are dangerous (2 away from pushing), minimize loss
+- Rule #5 considers card count: AI plays more aggressively when behind, more conservatively when ahead
+
 ## Implementation Details
 
 ### Turn Tracking

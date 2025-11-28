@@ -11,7 +11,6 @@
     <div class="modal show" id="loading-modal">
         <div class="modal-content loading-content">
             <img src="assets/logo.png" alt="Kyleigh's Cards" class="loading-logo">
-            <button class="btn play-btn" id="start-game-btn">Play!</button>
         </div>
     </div>
 
@@ -156,6 +155,15 @@
                             </label>
                         </div>
                         <p class="setting-description">When ON: Jack on Jack pushes to opponent. When OFF: Jack on Jack = you take the pile.</p>
+                    </div>
+                    <div class="setting-group">
+                        <label for="skill-level">Skill Level</label>
+                        <select id="skill-level" class="setting-select">
+                            <option value="kid">Kid</option>
+                            <option value="fun">Fun</option>
+                            <option value="expert" selected>Expert</option>
+                        </select>
+                        <p class="setting-description">Kid: Random play. Fun: Basic strategy. Expert: Advanced tactics with rule display.</p>
                     </div>
                 </div>
                 <p class="settings-note">Changes take effect on New Game</p>

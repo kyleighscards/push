@@ -654,8 +654,12 @@ class PushGame {
         // Settings with defaults
         this.settings = {
             pileCount: 3,
-            jackOnJack: true
+            jackOnJack: true,
+            skillLevel: 'expert'  // 'kid', 'fun', 'expert'
         };
+
+        // For Expert mode status display
+        this.lastExpertRule = '';
 
         this.playerDeck = [];
         this.opponentDeck = [];
@@ -701,12 +705,16 @@ class PushGame {
     updateSettingsUI() {
         const pileCountSelect = document.getElementById('pile-count');
         const jackOnJackToggle = document.getElementById('jack-on-jack');
+        const skillLevelSelect = document.getElementById('skill-level');
 
         if (pileCountSelect) {
             pileCountSelect.value = this.settings.pileCount.toString();
         }
         if (jackOnJackToggle) {
             jackOnJackToggle.checked = this.settings.jackOnJack;
+        }
+        if (skillLevelSelect) {
+            skillLevelSelect.value = this.settings.skillLevel;
         }
     }
 
@@ -959,6 +967,11 @@ class PushGame {
 
         document.getElementById('jack-on-jack').addEventListener('change', (e) => {
             this.settings.jackOnJack = e.target.checked;
+            this.saveSettings();
+        });
+
+        document.getElementById('skill-level').addEventListener('change', (e) => {
+            this.settings.skillLevel = e.target.value;
             this.saveSettings();
         });
 
@@ -1242,14 +1255,50 @@ class PushGame {
         // AI: Choose best pile
         const pileIndex = this.chooseOpponentPile(card);
 
+        // Log Expert rule to console if applicable
+        if (this.settings.skillLevel === 'expert' && this.lastExpertRule) {
+            console.log(this.lastExpertRule);
+        }
+
         // Animate card moving to pile, then process the play
         this.animateCardToPlay(card, pileIndex, 'opponent', () => {
             this.processCardPlay(card, pileIndex, 'opponent');
         });
     }
 
+    // Calculate pile score using scoring system: J=10, K=5, A=2, Q=2, numbers=1
+    calculatePileScore(pileIndex) {
+        const scoreValues = { 'J': 10, 'K': 5, 'A': 2, 'Q': 2 };
+        return this.piles[pileIndex].reduce((sum, card) => {
+            return sum + (scoreValues[card.rank] || 1);
+        }, 0);
+    }
+
+    // Main AI dispatcher - chooses strategy based on skill level
     chooseOpponentPile(card) {
-        // AI Strategy
+        switch (this.settings.skillLevel) {
+            case 'kid':
+                this.lastExpertRule = '';
+                return this.chooseRandomPile();
+            case 'fun':
+                this.lastExpertRule = '';
+                return this.chooseFunPile(card);
+            case 'expert':
+            default:
+                const result = this.chooseExpertPile(card);
+                this.lastExpertRule = result.rule;
+                return result.pile;
+        }
+    }
+
+    // Kid strategy - completely random
+    chooseRandomPile() {
+        const pileCount = this.settings.pileCount;
+        return Math.floor(Math.random() * pileCount);
+    }
+
+    // Fun strategy - original basic AI logic
+    chooseFunPile(card) {
         const pileCount = this.settings.pileCount;
         const validPiles = Array.from({ length: pileCount }, (_, i) => i);
 
@@ -1305,6 +1354,187 @@ class PushGame {
         }
 
         return bestPile;
+    }
+
+    // Expert strategy - applies 6 rules in priority order
+    chooseExpertPile(card) {
+        const pileCount = this.settings.pileCount;
+        const validPiles = Array.from({ length: pileCount }, (_, i) => i);
+
+        // Rule 1: Jack-on-Jack opportunity
+        if (this.settings.jackOnJack && card.rank === 'J') {
+            for (const i of validPiles) {
+                const pile = this.piles[i];
+                if (pile.length > 0) {
+                    const topCard = pile[pile.length - 1];
+                    if (topCard.rank === 'J') {
+                        return { pile: i, rule: 'Rule #1 | Condition: Jack-on-Jack opportunity | Action: Play Jack on Jack' };
+                    }
+                }
+            }
+        }
+
+        // Rule 2: Push opportunity (number card, can complete push, pick highest score)
+        if (!this.isSpecialCard(card)) {
+            let bestPile = -1;
+            let bestScore = -1;
+            for (const i of validPiles) {
+                const state = this.pileStates[i];
+                if (state && state.playedBy === 'player') {
+                    const remaining = state.targetCount - state.count;
+                    if (remaining === 1) {
+                        const score = this.calculatePileScore(i);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestPile = i;
+                        }
+                    }
+                }
+            }
+            if (bestPile >= 0) {
+                return { pile: bestPile, rule: `Rule #2 | Condition: Push opportunity (1 card remaining) | Action: Push pile for ${bestScore} points` };
+            }
+        }
+
+        // Rule 3: Defensive play
+        // Check if ALL piles with active countdowns need exactly 2 cards to push
+        // (and there are no "safe" piles - empty or without countdown)
+        const pilesWithCountdown = validPiles.filter(i => {
+            const state = this.pileStates[i];
+            return state && state.targetCount > 0;
+        });
+        const pilesWithoutCountdown = validPiles.filter(i => {
+            const state = this.pileStates[i];
+            return !state || state.targetCount === 0;
+        });
+        // All piles dangerous = all have countdown AND all need exactly 2, AND no safe piles
+        const allPilesHave2 = pilesWithCountdown.length > 0 &&
+            pilesWithoutCountdown.length === 0 &&
+            pilesWithCountdown.every(i => {
+                const state = this.pileStates[i];
+                return (state.targetCount - state.count) === 2;
+            });
+
+        // OR if Jack and any pile has number on top
+        const jackOnNumber = card.rank === 'J' && validPiles.some(i => {
+            const pile = this.piles[i];
+            return pile.length > 0 && !this.isSpecialCard(pile[pile.length - 1]);
+        });
+
+        if ((!this.isSpecialCard(card) && allPilesHave2) || jackOnNumber) {
+            // Find pile with lowest score
+            let lowestPile = validPiles[0];
+            let lowestScore = Infinity;
+            for (const i of validPiles) {
+                // For Jack, prefer piles with number cards on top
+                if (card.rank === 'J') {
+                    const pile = this.piles[i];
+                    if (pile.length > 0 && !this.isSpecialCard(pile[pile.length - 1])) {
+                        const score = this.calculatePileScore(i);
+                        if (score < lowestScore) {
+                            lowestScore = score;
+                            lowestPile = i;
+                        }
+                    }
+                } else {
+                    const score = this.calculatePileScore(i);
+                    if (score < lowestScore) {
+                        lowestScore = score;
+                        lowestPile = i;
+                    }
+                }
+            }
+            return { pile: lowestPile, rule: 'Rule #3 | Condition: All piles at 2 OR Jack on number | Action: Play on lowest-scoring pile' };
+        }
+
+        // Rule 4: Number card - favor safe piles, then large piles
+        if (!this.isSpecialCard(card)) {
+            // First priority: empty piles (safest)
+            const emptyPiles = validPiles.filter(i => this.piles[i].length === 0);
+            if (emptyPiles.length > 0) {
+                return { pile: emptyPiles[0], rule: 'Rule #4 | Condition: Number card, empty pile available | Action: Play on empty pile' };
+            }
+
+            // Second priority: piles without countdown (just number cards, no special)
+            const safePiles = validPiles.filter(i => {
+                const state = this.pileStates[i];
+                return !state || state.targetCount === 0;
+            });
+            if (safePiles.length > 0) {
+                // Pick the largest safe pile
+                let bestPile = safePiles[0];
+                let maxCards = this.piles[safePiles[0]].length;
+                for (const i of safePiles) {
+                    if (this.piles[i].length > maxCards) {
+                        maxCards = this.piles[i].length;
+                        bestPile = i;
+                    }
+                }
+                return { pile: bestPile, rule: 'Rule #4 | Condition: Number card, safe pile available | Action: Play on largest safe pile' };
+            }
+
+            // Third priority: piles with most cards remaining to push (least dangerous)
+            let bestPile = validPiles[0];
+            let mostRemaining = -1;
+            for (const i of validPiles) {
+                const state = this.pileStates[i];
+                const remaining = state ? (state.targetCount - state.count) : 0;
+                if (remaining > mostRemaining) {
+                    mostRemaining = remaining;
+                    bestPile = i;
+                }
+            }
+            return { pile: bestPile, rule: 'Rule #4 | Condition: Number card, no safe pile | Action: Play on least dangerous pile' };
+        }
+
+        // Rule 5: Special card strategy
+        if (this.isSpecialCard(card)) {
+            const aiCards = this.opponentDeck.length;
+            const playerCards = this.playerDeck.length;
+
+            // Find piles with number cards on top (for "reset")
+            const pilesWithNumbers = validPiles.filter(i => {
+                const pile = this.piles[i];
+                return pile.length > 0 && !this.isSpecialCard(pile[pile.length - 1]);
+            });
+
+            // Find empty piles
+            const emptyPiles = validPiles.filter(i => this.piles[i].length === 0);
+
+            if (aiCards < playerCards) {
+                // Losing: reset largest pile
+                if (pilesWithNumbers.length > 0) {
+                    let largestPile = pilesWithNumbers[0];
+                    let maxCards = this.piles[pilesWithNumbers[0]].length;
+                    for (const i of pilesWithNumbers) {
+                        if (this.piles[i].length > maxCards) {
+                            maxCards = this.piles[i].length;
+                            largestPile = i;
+                        }
+                    }
+                    return { pile: largestPile, rule: 'Rule #5 | Condition: Special card, AI behind | Action: Reset largest pile' };
+                }
+            } else {
+                // Winning or tied: use empty pile or reset smallest
+                if (emptyPiles.length > 0) {
+                    return { pile: emptyPiles[0], rule: 'Rule #5 | Condition: Special card, AI ahead/tied | Action: Start fresh pile' };
+                }
+                if (pilesWithNumbers.length > 0) {
+                    let smallestPile = pilesWithNumbers[0];
+                    let minCards = this.piles[pilesWithNumbers[0]].length;
+                    for (const i of pilesWithNumbers) {
+                        if (this.piles[i].length < minCards) {
+                            minCards = this.piles[i].length;
+                            smallestPile = i;
+                        }
+                    }
+                    return { pile: smallestPile, rule: 'Rule #5 | Condition: Special card, AI ahead/tied, no empty | Action: Reset smallest pile' };
+                }
+            }
+        }
+
+        // Rule 6: Fallback to Fun strategy
+        return { pile: this.chooseFunPile(card), rule: 'Rule #6 | Condition: No other rule applies | Action: Use Fun strategy' };
     }
 
     isSpecialCard(card) {
@@ -1510,11 +1740,11 @@ class PushGame {
                     return html;
                 }).join('');
 
-                // Show pile state info
+                // Show pile state info (always include card count)
                 if (pileState) {
                     const remaining = pileState.targetCount - pileState.count;
                     const owner = pileState.playedBy === 'player' ? 'Your' : "Opponent's";
-                    infoContainer.textContent = `${owner} ${pileState.specialCard}: ${remaining} to push`;
+                    infoContainer.textContent = `${pile.length} cards | ${owner} ${pileState.specialCard}: ${remaining} to push`;
                 } else {
                     infoContainer.textContent = `${pile.length} cards`;
                 }
@@ -1580,9 +1810,14 @@ class PushGame {
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new PushGame();
 
-    // Handle loading modal
-    document.getElementById('start-game-btn').addEventListener('click', () => {
-        document.getElementById('loading-modal').classList.remove('show');
-        window.game.startNewGame();
-    });
+    // Handle loading modal - auto fade after 3 seconds
+    const loadingModal = document.getElementById('loading-modal');
+    setTimeout(() => {
+        loadingModal.classList.add('fading');
+        setTimeout(() => {
+            loadingModal.classList.remove('show');
+            loadingModal.classList.remove('fading');
+            window.game.startNewGame();
+        }, 1000); // 1 second fade duration
+    }, 1750); // 1.75 second delay before fade
 });
