@@ -192,6 +192,181 @@ const THEMES = {
                 '--card-back-bg': 'linear-gradient(135deg, #722f37 0%, #8b4513 100%)',
                 '--card-back-border': '3px solid #d4af37'
             }
+        },
+        'robot': {
+            name: 'Robot',
+            emoji: '🤖',
+            cardBackEmoji: '🤖',
+            suitSymbols: { hearts: '🤖', diamonds: '⚙️', clubs: '🔩', spades: '🔋' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #2c3e50 0%, #4a6572 100%)',
+                '--gold': '#00ff88',
+                '--push-color': '#00ff88',
+                '--push-shadow': '#ff0000',
+                '--card-back-bg': 'linear-gradient(135deg, #4a6572 0%, #2c3e50 100%)',
+                '--card-back-border': '3px solid #00ff88'
+            }
+        },
+        'shark': {
+            name: 'Shark',
+            emoji: '🦈',
+            cardBackEmoji: '🦈',
+            suitSymbols: { hearts: '🦈', diamonds: '🐟', clubs: '🌊', spades: '🐚' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #1a5276 0%, #2980b9 100%)',
+                '--gold': '#ffffff',
+                '--push-color': '#ff6b6b',
+                '--card-back-bg': 'linear-gradient(135deg, #2980b9 0%, #1a5276 100%)',
+                '--card-back-border': '3px solid #ffffff'
+            }
+        },
+        'cat': {
+            name: 'Cat',
+            emoji: '🐱',
+            cardBackEmoji: '🐱',
+            suitSymbols: { hearts: '🐱', diamonds: '🐾', clubs: '🧶', spades: '🐟' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)',
+                '--gold': '#ffffff',
+                '--push-color': '#ff69b4',
+                '--card-back-bg': 'linear-gradient(135deg, #e67e22 0%, #d35400 100%)',
+                '--card-back-border': '3px solid #ffffff'
+            }
+        },
+        'dog': {
+            name: 'Dog',
+            emoji: '🐶',
+            cardBackEmoji: '🐶',
+            suitSymbols: { hearts: '🐶', diamonds: '🦴', clubs: '🐾', spades: '🎾' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)',
+                '--gold': '#ffd700',
+                '--push-color': '#ffd700',
+                '--card-back-bg': 'linear-gradient(135deg, #a0522d 0%, #8b4513 100%)',
+                '--card-back-border': '3px solid #ffd700'
+            }
+        },
+        'sword': {
+            name: 'Sword',
+            emoji: '⚔️',
+            cardBackEmoji: '⚔️',
+            suitSymbols: { hearts: '⚔️', diamonds: '🛡️', clubs: '🗡️', spades: '🏰' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #4a4a4a 0%, #2c2c2c 100%)',
+                '--gold': '#c0c0c0',
+                '--push-color': '#ffd700',
+                '--push-shadow': '#8b0000',
+                '--card-back-bg': 'linear-gradient(135deg, #5a5a5a 0%, #2c2c2c 100%)',
+                '--card-back-border': '3px solid #c0c0c0'
+            }
+        },
+        'flower': {
+            name: 'Flower',
+            emoji: '🌸',
+            cardBackEmoji: '🌸',
+            suitSymbols: { hearts: '🌸', diamonds: '🌻', clubs: '🌷', spades: '🌺' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #ff9ff3 0%, #98fb98 100%)',
+                '--gold': '#ff1493',
+                '--push-color': '#ff1493',
+                '--card-back-bg': 'linear-gradient(135deg, #ffb6c1 0%, #98fb98 100%)',
+                '--card-back-border': '3px solid #ff1493'
+            }
+        },
+        'girl': {
+            name: 'Girl',
+            emoji: '👧',
+            cardBackEmoji: '👧',
+            suitSymbols: { hearts: '💖', diamonds: '👑', clubs: '💄', spades: '👗' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+                '--gold': '#ffffff',
+                '--push-color': '#ffffff',
+                '--push-shadow': '#c71585',
+                '--card-back-bg': 'linear-gradient(135deg, #ff1493 0%, #c71585 100%)',
+                '--card-back-border': '3px solid #ffffff'
+            }
+        },
+        'boy': {
+            name: 'Boy',
+            emoji: '👦',
+            cardBackEmoji: '👦',
+            suitSymbols: { hearts: '⚽', diamonds: '🏀', clubs: '🎮', spades: '🚀' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                '--gold': '#f39c12',
+                '--push-color': '#f39c12',
+                '--card-back-bg': 'linear-gradient(135deg, #2980b9 0%, #1a5276 100%)',
+                '--card-back-border': '3px solid #f39c12'
+            }
+        },
+        'trip': {
+            name: 'Trip',
+            emoji: '✈️',
+            cardBackEmoji: '✈️',
+            suitSymbols: { hearts: '✈️', diamonds: '🗺️', clubs: '🧳', spades: '🏝️' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #87ceeb 0%, #4682b4 100%)',
+                '--gold': '#ffffff',
+                '--push-color': '#ffd700',
+                '--card-back-bg': 'linear-gradient(135deg, #4682b4 0%, #2c5282 100%)',
+                '--card-back-border': '3px solid #ffffff'
+            }
+        },
+        'electronics': {
+            name: 'Electronics',
+            emoji: '💻',
+            cardBackEmoji: '💻',
+            suitSymbols: { hearts: '💻', diamonds: '📱', clubs: '🔌', spades: '💡' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                '--gold': '#00ff00',
+                '--push-color': '#00ff00',
+                '--push-shadow': '#0000ff',
+                '--card-back-bg': 'linear-gradient(135deg, #16213e 0%, #0f0f23 100%)',
+                '--card-back-border': '3px solid #00ff00'
+            }
+        },
+        'outdoor': {
+            name: 'Outdoor',
+            emoji: '🏕️',
+            cardBackEmoji: '🏕️',
+            suitSymbols: { hearts: '🏕️', diamonds: '🌲', clubs: '🔥', spades: '⛰️' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #228b22 0%, #2e8b57 100%)',
+                '--gold': '#ffa500',
+                '--push-color': '#ffa500',
+                '--card-back-bg': 'linear-gradient(135deg, #2e8b57 0%, #1a5f3c 100%)',
+                '--card-back-border': '3px solid #ffa500'
+            }
+        },
+        'video-game': {
+            name: 'Video Game',
+            emoji: '🎮',
+            cardBackEmoji: '🎮',
+            suitSymbols: { hearts: '🎮', diamonds: '👾', clubs: '🕹️', spades: '🏆' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #6b21a8 0%, #9333ea 100%)',
+                '--gold': '#22d3ee',
+                '--push-color': '#22d3ee',
+                '--push-shadow': '#f43f5e',
+                '--card-back-bg': 'linear-gradient(135deg, #9333ea 0%, #6b21a8 100%)',
+                '--card-back-border': '3px solid #22d3ee'
+            }
+        },
+        'science': {
+            name: 'Science',
+            emoji: '🔬',
+            cardBackEmoji: '🔬',
+            suitSymbols: { hearts: '🔬', diamonds: '⚗️', clubs: '🧪', spades: '🧬' },
+            vars: {
+                '--bg-gradient': 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)',
+                '--gold': '#00ffcc',
+                '--push-color': '#00ffcc',
+                '--push-shadow': '#ff6b6b',
+                '--card-back-bg': 'linear-gradient(135deg, #2d5a87 0%, #1e3a5f 100%)',
+                '--card-back-border': '3px solid #00ffcc'
+            }
         }
     },
     month: {
