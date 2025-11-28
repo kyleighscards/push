@@ -57,6 +57,39 @@ The game includes a Settings page accessible via a gear icon button. Settings ar
 - `saveSettings()` persists to localStorage when changed
 - Number of piles affects: pile array initialization, HTML rendering, AI pile selection
 
+## Themes
+
+The game includes a comprehensive theming system accessible via the "Theme" button. Themes are organized into 4 sets and saved to localStorage.
+
+### Theme Sets
+
+| Set | Count | Description |
+|-----|-------|-------------|
+| Color | 16 | Background color gradients (Sunset Orange, Ocean Blue, etc.) |
+| Fun | 4 | Creative themes with custom suit symbols (Bananas, Unicorns, Space Adventure, Instruments) |
+| Month | 12 | Seasonal themes for each month |
+| Holiday | 8 | Holiday-specific themes (Christmas, Halloween, etc.) |
+
+### Fun Theme Suit Symbols
+Fun themes replace standard suit symbols with themed emojis:
+- **Bananas**: 🍌 🍋 🥥 🌴
+- **Unicorns**: 💖 ⭐ 🌙 ✨
+- **Space Adventure**: 🌟 🪐 🛸 🌌
+- **Instruments**: 🎸 🎹 🎺 🥁
+
+### Auto-Detection
+On startup, the game suggests seasonal themes:
+- Detects current month and upcoming holidays
+- Shows suggestion popup: "🎄 It's December! Try the Christmas theme?"
+- User can accept or dismiss; respects saved preferences
+
+### Implementation Notes
+- Themes stored in `THEMES` constant object
+- `applyTheme(set, themeId)` applies CSS variables to `:root`
+- `autoDetectTheme()` checks month/holiday dates
+- Theme preference saved to localStorage key `pushGameTheme`
+- Card readability maintained: white/light card faces, high-contrast text
+
 ## Project Structure
 
 ```
