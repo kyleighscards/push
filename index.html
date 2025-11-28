@@ -70,6 +70,7 @@
         <div class="controls">
             <button class="btn new-game-btn" id="new-game-btn">New Game</button>
             <button class="btn rules-btn" id="rules-btn">How to Play</button>
+            <button class="btn settings-btn" id="settings-btn">Settings</button>
         </div>
 
         <!-- Rules Modal -->
@@ -98,8 +99,8 @@
 
                     <h3>Special Rules</h3>
                     <ol>
-                        <li>Special card on special card = YOU take the pile (except Jack on Jack)</li>
-                        <li>Jack on Jack = the OTHER player takes the pile!</li>
+                        <li>Special card on special card = YOU take the pile (except Jack on Jack if enabled in Settings)</li>
+                        <li>Jack on Jack = the OTHER player takes the pile! (if Jack-on-Jack rule is ON)</li>
                         <li>A new special card on a number card starts a new count</li>
                         <li>After ANY play, it becomes the other player's turn</li>
                     </ol>
@@ -113,6 +114,36 @@
                 <h2 id="win-message">You Win!</h2>
                 <div class="win-animation" id="win-animation"></div>
                 <button class="btn play-again-btn" id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settings-modal">
+            <div class="modal-content settings-content">
+                <span class="close-btn" id="close-settings">&times;</span>
+                <h2>Settings</h2>
+                <div class="settings-form">
+                    <div class="setting-group">
+                        <label for="pile-count">Number of Piles</label>
+                        <select id="pile-count" class="setting-select">
+                            <option value="2">2 Piles</option>
+                            <option value="3" selected>3 Piles</option>
+                            <option value="4">4 Piles</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="jack-on-jack">Jack-on-Jack Rule</label>
+                        <div class="toggle-container">
+                            <input type="checkbox" id="jack-on-jack" class="toggle-input" checked>
+                            <label for="jack-on-jack" class="toggle-label">
+                                <span class="toggle-text on">ON</span>
+                                <span class="toggle-text off">OFF</span>
+                            </label>
+                        </div>
+                        <p class="setting-description">When ON: Jack on Jack pushes to opponent. When OFF: Jack on Jack = you take the pile.</p>
+                    </div>
+                </div>
+                <p class="settings-note">Changes take effect on New Game</p>
             </div>
         </div>
     </div>

@@ -13,16 +13,58 @@ class PushGame {
         this.specialCards = ['J', 'Q', 'K', 'A'];
         this.pushCounts = { 'A': 4, 'K': 3, 'Q': 2, 'J': 1 };
 
+        // Settings with defaults
+        this.settings = {
+            pileCount: 3,
+            jackOnJack: true
+        };
+
         this.playerDeck = [];
         this.opponentDeck = [];
-        this.piles = [[], [], []];
-        this.pileStates = [null, null, null]; // Tracks special card state for each pile
+        this.piles = [];
+        this.pileStates = [];
         this.currentCard = null;
         this.isPlayerTurn = true;  // Tracks whose turn it is
         this.currentTurnPlayer = 'player';  // Tracks who is currently playing (for turn alternation)
         this.gameActive = false;
 
+        this.loadSettings();
         this.initializeEventListeners();
+    }
+
+    loadSettings() {
+        try {
+            const saved = localStorage.getItem('pushGameSettings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                this.settings = { ...this.settings, ...parsed };
+            }
+        } catch (e) {
+            console.log('Could not load settings, using defaults');
+        }
+
+        // Update UI to reflect loaded settings
+        this.updateSettingsUI();
+    }
+
+    saveSettings() {
+        try {
+            localStorage.setItem('pushGameSettings', JSON.stringify(this.settings));
+        } catch (e) {
+            console.log('Could not save settings');
+        }
+    }
+
+    updateSettingsUI() {
+        const pileCountSelect = document.getElementById('pile-count');
+        const jackOnJackToggle = document.getElementById('jack-on-jack');
+
+        if (pileCountSelect) {
+            pileCountSelect.value = this.settings.pileCount.toString();
+        }
+        if (jackOnJackToggle) {
+            jackOnJackToggle.checked = this.settings.jackOnJack;
+        }
     }
 
     initializeEventListeners() {
@@ -31,15 +73,38 @@ class PushGame {
         document.getElementById('rules-btn').addEventListener('click', () => this.showRules());
         document.getElementById('close-rules').addEventListener('click', () => this.hideRules());
 
-        // Pile click listeners
-        for (let i = 0; i < 3; i++) {
-            document.getElementById(`pile-${i}`).addEventListener('click', () => this.playCardOnPile(i));
-        }
+        // Settings modal listeners
+        document.getElementById('settings-btn').addEventListener('click', () => this.showSettings());
+        document.getElementById('close-settings').addEventListener('click', () => this.hideSettings());
 
-        // Close modal when clicking outside
+        // Settings change listeners
+        document.getElementById('pile-count').addEventListener('change', (e) => {
+            this.settings.pileCount = parseInt(e.target.value);
+            this.saveSettings();
+        });
+
+        document.getElementById('jack-on-jack').addEventListener('change', (e) => {
+            this.settings.jackOnJack = e.target.checked;
+            this.saveSettings();
+        });
+
+        // Close modals when clicking outside
         document.getElementById('rules-modal').addEventListener('click', (e) => {
             if (e.target.id === 'rules-modal') this.hideRules();
         });
+
+        document.getElementById('settings-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'settings-modal') this.hideSettings();
+        });
+    }
+
+    showSettings() {
+        this.updateSettingsUI();
+        document.getElementById('settings-modal').classList.add('show');
+    }
+
+    hideSettings() {
+        document.getElementById('settings-modal').classList.remove('show');
     }
 
     createDeck() {
@@ -71,13 +136,17 @@ class PushGame {
         this.playerDeck = fullDeck.slice(0, 26);
         this.opponentDeck = fullDeck.slice(26);
 
-        // Reset piles
-        this.piles = [[], [], []];
-        this.pileStates = [null, null, null];
+        // Reset piles based on settings
+        const pileCount = this.settings.pileCount;
+        this.piles = Array(pileCount).fill(null).map(() => []);
+        this.pileStates = Array(pileCount).fill(null);
         this.currentCard = null;
         this.isPlayerTurn = true;
         this.currentTurnPlayer = 'player';
         this.gameActive = true;
+
+        // Render piles HTML based on pile count
+        this.renderPilesHTML();
 
         // Update UI
         this.updateUI();
@@ -86,6 +155,29 @@ class PushGame {
 
         // Auto-draw first card for player
         setTimeout(() => this.drawCard(), 300);
+    }
+
+    renderPilesHTML() {
+        const pilesArea = document.querySelector('.piles-area');
+        const pileCount = this.settings.pileCount;
+
+        // Create pile HTML
+        let html = '';
+        for (let i = 0; i < pileCount; i++) {
+            html += `
+                <div class="pile" id="pile-${i}" data-pile="${i}">
+                    <div class="pile-label">Pile ${i + 1}</div>
+                    <div class="pile-cards"></div>
+                    <div class="pile-info"></div>
+                </div>
+            `;
+        }
+        pilesArea.innerHTML = html;
+
+        // Re-attach click listeners
+        for (let i = 0; i < pileCount; i++) {
+            document.getElementById(`pile-${i}`).addEventListener('click', () => this.playCardOnPile(i));
+        }
     }
 
     drawCard() {
@@ -132,8 +224,9 @@ class PushGame {
                 this.renderPiles();
                 this.updateUI();
 
-                // Jack on Jack = the OTHER player takes pile (PUSH!)
-                if (card.rank === 'J' && topCard.rank === 'J') {
+                // Jack on Jack special rule (if enabled)
+                if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) {
+                    // Jack on Jack = the OTHER player takes pile (PUSH!)
                     this.showPushPopup();
                     this.setStatus(isPlayer ? "Jack on Jack! Claude takes the pile!" : "Jack on Jack! You take the pile!");
 
@@ -145,7 +238,8 @@ class PushGame {
                     return;
                 }
 
-                // Other special on special = YOU take the pile (penalty PUSH!)
+                // Special on special = YOU take the pile (penalty PUSH!)
+                // (This also handles Jack on Jack when setting is OFF)
                 this.showPushPopup();
                 this.setStatus(isPlayer ? "Special on special! You take the pile!" : "Special on special! Claude takes the pile.");
 
@@ -271,11 +365,12 @@ class PushGame {
 
     chooseOpponentPile(card) {
         // AI Strategy
-        const validPiles = [0, 1, 2];
+        const pileCount = this.settings.pileCount;
+        const validPiles = Array.from({ length: pileCount }, (_, i) => i);
 
         // If we have a special card, try to play it safely
         if (this.isSpecialCard(card)) {
-            // Avoid playing on another special card (unless Jack on Jack for advantage)
+            // Avoid playing on another special card (unless Jack on Jack for advantage when setting is ON)
             for (const i of validPiles) {
                 const pile = this.piles[i];
                 if (pile.length === 0) return i; // Empty pile is safe
@@ -283,8 +378,8 @@ class PushGame {
                 const topCard = pile[pile.length - 1];
                 if (!this.isSpecialCard(topCard)) return i; // Number card is safe
 
-                // Jack on Jack makes player take pile - good move!
-                if (card.rank === 'J' && topCard.rank === 'J') return i;
+                // Jack on Jack makes player take pile - good move! (only if setting is ON)
+                if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) return i;
             }
 
             // Have to play on a special card - pick the smallest pile
@@ -372,12 +467,15 @@ class PushGame {
     }
 
     highlightPiles(highlight) {
-        for (let i = 0; i < 3; i++) {
+        const pileCount = this.settings.pileCount;
+        for (let i = 0; i < pileCount; i++) {
             const pile = document.getElementById(`pile-${i}`);
-            if (highlight) {
-                pile.classList.add('highlight');
-            } else {
-                pile.classList.remove('highlight');
+            if (pile) {
+                if (highlight) {
+                    pile.classList.add('highlight');
+                } else {
+                    pile.classList.remove('highlight');
+                }
             }
         }
     }
@@ -503,11 +601,14 @@ class PushGame {
     }
 
     renderPiles(animatePileIndex = -1) {
-        for (let i = 0; i < 3; i++) {
+        const pileCount = this.settings.pileCount;
+        for (let i = 0; i < pileCount; i++) {
             const pile = this.piles[i];
             const pileState = this.pileStates[i];
-            const container = document.getElementById(`pile-${i}`).querySelector('.pile-cards');
-            const infoContainer = document.getElementById(`pile-${i}`).querySelector('.pile-info');
+            const pileEl = document.getElementById(`pile-${i}`);
+            if (!pileEl) continue;
+            const container = pileEl.querySelector('.pile-cards');
+            const infoContainer = pileEl.querySelector('.pile-info');
 
             if (pile.length === 0) {
                 container.innerHTML = '<div class="card empty-pile"></div>';

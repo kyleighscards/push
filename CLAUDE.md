@@ -34,10 +34,28 @@ Special cards (J, Q, K, A) trigger a "push" countdown. When a special card is pl
 
 ### Special Card on Special Card Rules (All trigger PUSH! animation)
 1. Playing a special card directly on another special card = YOU take the pile (penalty)
-2. **Exception**: Jack on Jack = your OPPONENT takes the pile (reverse penalty)
+2. **Exception** (if Jack-on-Jack rule enabled): Jack on Jack = your OPPONENT takes the pile (reverse penalty)
 3. Playing a special card on a number card starts a new push count (previous special card no longer matters)
 
 **Turn order is simple**: After ANY play, it becomes the other player's turn. Period.
+
+## Settings
+
+The game includes a Settings page accessible via a gear icon button. Settings are saved to localStorage and persist across sessions.
+
+### Available Settings
+
+| Setting | Options | Default | Description |
+|---------|---------|---------|-------------|
+| Number of Piles | 2, 3, or 4 | 3 | Changes the number of discard piles in the middle of the game board |
+| Jack-on-Jack Rule | On/Off | On | When ON: Jacks played on a Jack push to the other player (reverse penalty). When OFF: Jacks on Jack are treated like any other special card on special card (you take the pile) |
+
+### Implementation Notes
+- Settings changes take effect on the next new game
+- `game.settings` object stores current settings
+- `loadSettings()` loads from localStorage on startup
+- `saveSettings()` persists to localStorage when changed
+- Number of piles affects: pile array initialization, HTML rendering, AI pile selection
 
 ## Project Structure
 
