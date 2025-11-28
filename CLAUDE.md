@@ -102,6 +102,12 @@ game.js     - Game logic, AI opponent, state management
 
 Static web project - open `index.html` directly in a browser. No build system required.
 
+## Deployment
+
+See [DEPLOY.md](DEPLOY.md) for instructions on deploying to GitHub Pages.
+
+**Live site:** https://kyleighscards.github.io/push/
+
 ## Current Features
 
 - Auto-start game on page load
