@@ -1,0 +1,82 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Push! is a card game invented by a young girl. This project is a web-based implementation where players can play against an AI opponent (Claude).
+
+## Game Rules
+
+### Setup
+- Two players split a standard 52-card deck (26 cards each, no Jokers)
+- Three shared piles in the middle for playing cards
+- Goal: Be the first to get rid of all your cards
+
+### Gameplay
+- Players **strictly alternate turns** - one player, then the other, regardless of what happens
+- On your turn, draw a card from your deck and play it on any of the 3 piles
+- After ANY play, the turn passes to the other player
+- The game tracks `currentTurnPlayer` and simply switches after each action
+- Push outcomes (who takes a pile) do NOT affect turn order - turns always alternate
+
+### Special Cards and Push Mechanics
+Special cards (J, Q, K, A) trigger a "push" countdown. When a special card is played, a total number of **number cards** (from either player) must be played on that pile:
+
+- **Ace**: 4 number cards to complete the push
+- **King**: 3 number cards to complete the push
+- **Queen**: 2 number cards to complete the push
+- **Jack**: 1 number card to complete the push
+
+**Important**: The count is the TOTAL number cards played by BOTH players combined, not per-player.
+
+**When the push completes**: The player who plays the final number card (completes the push) forces their **OPPONENT** to take the pile. So if YOU complete the push, CLAUDE takes the pile. If CLAUDE completes the push, YOU take the pile. Either way, turns then alternate to the other player.
+
+### Special Card on Special Card Rules (All trigger PUSH! animation)
+1. Playing a special card directly on another special card = YOU take the pile (penalty)
+2. **Exception**: Jack on Jack = your OPPONENT takes the pile (reverse penalty)
+3. Playing a special card on a number card starts a new push count (previous special card no longer matters)
+
+**Turn order is simple**: After ANY play, it becomes the other player's turn. Period.
+
+## Project Structure
+
+```
+index.html  - Game layout and structure
+styles.css  - Visual styling, card designs, animations
+game.js     - Game logic, AI opponent, state management
+```
+
+## Development
+
+Static web project - open `index.html` directly in a browser. No build system required.
+
+## Current Features
+
+- Auto-start game on page load
+- Auto-draw cards on player's turn (no Draw Card button needed)
+- "Play Again" button for new rounds
+- **Card play animation** - cards fly from hand/deck to the target pile
+- **Push! popup animation** - shown for ALL pushes:
+  - When number card count is reached on a special card
+  - When special card is played on special card (penalty)
+  - When Jack is played on Jack (reverse penalty)
+- **Card-by-card flying animation** when taking piles (with incrementing card count) - used for ALL push scenarios
+- **Strictly alternating turns** - tracks `currentTurnPlayer` and uses `switchTurn()` method after ANY action
+- AI opponent with basic strategy
+- Visual card designs with suit symbols
+- Responsive layout
+
+## Implementation Details
+
+### Turn Tracking
+The game uses a simple turn alternation system:
+- `currentTurnPlayer` variable tracks whose turn it is ('player' or 'opponent')
+- `switchTurn()` method switches to the other player after any action completes
+- This ensures turns ALWAYS alternate regardless of push outcomes or pile takes
+
+### Example Turn Sequence
+1. Player plays Jack on Pile 1 → turn switches to Claude
+2. Claude plays Queen on Pile 1 (special on special) → Claude takes pile → turn switches to Player
+3. Player plays next card → turn switches to Claude
+4. And so on...
