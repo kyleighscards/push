@@ -373,100 +373,148 @@ const THEMES = {
         'january': {
             name: 'January',
             emoji: '❄️',
+            cardBackEmoji: '❄️',
+            suitSymbols: { hearts: '❄️', diamonds: '⛷️', clubs: '🧣', spades: '☃️' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%)',
                 '--gold': '#4169e1',
-                '--push-color': '#4169e1'
+                '--push-color': '#4169e1',
+                '--card-back-bg': 'linear-gradient(135deg, #b2ebf2 0%, #81d4fa 100%)',
+                '--card-back-border': '3px solid #4169e1'
             }
         },
         'february': {
             name: 'February',
             emoji: '💕',
+            cardBackEmoji: '💕',
+            suitSymbols: { hearts: '💖', diamonds: '💝', clubs: '🌹', spades: '💘' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #ffb6c1 0%, #ff69b4 100%)',
                 '--gold': '#c71585',
-                '--push-color': '#c71585'
+                '--push-color': '#c71585',
+                '--card-back-bg': 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+                '--card-back-border': '3px solid #ffffff'
             }
         },
         'march': {
             name: 'March',
             emoji: '☘️',
+            cardBackEmoji: '☘️',
+            suitSymbols: { hearts: '☘️', diamonds: '🌈', clubs: '🍀', spades: '🌱' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #50c878 0%, #228b22 100%)',
-                '--gold': '#ffd700'
+                '--gold': '#ffd700',
+                '--card-back-bg': 'linear-gradient(135deg, #228b22 0%, #006400 100%)',
+                '--card-back-border': '3px solid #ffd700'
             }
         },
         'april': {
             name: 'April',
             emoji: '🌷',
+            cardBackEmoji: '🌷',
+            suitSymbols: { hearts: '🌷', diamonds: '🌧️', clubs: '🐣', spades: '🌂' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #e6e6fa 0%, #add8e6 100%)',
-                '--gold': '#ff69b4'
+                '--gold': '#ff69b4',
+                '--card-back-bg': 'linear-gradient(135deg, #add8e6 0%, #87ceeb 100%)',
+                '--card-back-border': '3px solid #ff69b4'
             }
         },
         'may': {
             name: 'May',
             emoji: '🌸',
+            cardBackEmoji: '🌸',
+            suitSymbols: { hearts: '🌸', diamonds: '🌺', clubs: '🦋', spades: '🌼' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #ffb7c5 0%, #90ee90 100%)',
-                '--gold': '#ff1493'
+                '--gold': '#ff1493',
+                '--card-back-bg': 'linear-gradient(135deg, #98fb98 0%, #90ee90 100%)',
+                '--card-back-border': '3px solid #ff1493'
             }
         },
         'june': {
             name: 'June',
             emoji: '☀️',
+            cardBackEmoji: '☀️',
+            suitSymbols: { hearts: '☀️', diamonds: '🌻', clubs: '🍦', spades: '😎' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #ffeb3b 0%, #ff9800 100%)',
                 '--gold': '#ff5722',
-                '--push-color': '#ff5722'
+                '--push-color': '#ff5722',
+                '--card-back-bg': 'linear-gradient(135deg, #ff9800 0%, #ff5722 100%)',
+                '--card-back-border': '3px solid #ffffff'
             }
         },
         'july': {
             name: 'July',
             emoji: '🏖️',
+            cardBackEmoji: '🏖️',
+            suitSymbols: { hearts: '🏖️', diamonds: '🌊', clubs: '🐚', spades: '🩴' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #00bcd4 0%, #ffe4b5 100%)',
-                '--gold': '#ff7f50'
+                '--gold': '#ff7f50',
+                '--card-back-bg': 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)',
+                '--card-back-border': '3px solid #ffe4b5'
             }
         },
         'august': {
             name: 'August',
             emoji: '🌴',
+            cardBackEmoji: '🌴',
+            suitSymbols: { hearts: '🌴', diamonds: '🍉', clubs: '🌞', spades: '🏄' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%)',
-                '--gold': '#ffffff'
+                '--gold': '#ffffff',
+                '--card-back-bg': 'linear-gradient(135deg, #4ecdc4 0%, #26a69a 100%)',
+                '--card-back-border': '3px solid #ffffff'
             }
         },
         'september': {
             name: 'September',
             emoji: '📚',
+            cardBackEmoji: '📚',
+            suitSymbols: { hearts: '📚', diamonds: '✏️', clubs: '🎒', spades: '🍎' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #2f4f4f 0%, #556b2f 100%)',
-                '--gold': '#ff0000'
+                '--gold': '#ff0000',
+                '--card-back-bg': 'linear-gradient(135deg, #556b2f 0%, #2f4f4f 100%)',
+                '--card-back-border': '3px solid #ff0000'
             }
         },
         'october': {
             name: 'October',
             emoji: '🍂',
+            cardBackEmoji: '🍂',
+            suitSymbols: { hearts: '🍂', diamonds: '🎃', clubs: '🍁', spades: '👻' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #ff8c00 0%, #dc143c 100%)',
-                '--gold': '#8b4513'
+                '--gold': '#8b4513',
+                '--card-back-bg': 'linear-gradient(135deg, #dc143c 0%, #8b0000 100%)',
+                '--card-back-border': '3px solid #ff8c00'
             }
         },
         'november': {
             name: 'November',
             emoji: '🦃',
+            cardBackEmoji: '🦃',
+            suitSymbols: { hearts: '🦃', diamonds: '🍂', clubs: '🌽', spades: '🥧' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #8b4513 0%, #daa520 100%)',
-                '--gold': '#ff8c00'
+                '--gold': '#ff8c00',
+                '--card-back-bg': 'linear-gradient(135deg, #daa520 0%, #8b4513 100%)',
+                '--card-back-border': '3px solid #ff8c00'
             }
         },
         'december': {
             name: 'December',
             emoji: '🎄',
+            cardBackEmoji: '🎄',
+            suitSymbols: { hearts: '🎄', diamonds: '⭐', clubs: '🎁', spades: '❄️' },
             vars: {
                 '--bg-gradient': 'linear-gradient(135deg, #006400 0%, #8b0000 100%)',
-                '--gold': '#ffd700'
+                '--gold': '#ffd700',
+                '--card-back-bg': 'linear-gradient(135deg, #006400 0%, #004d00 100%)',
+                '--card-back-border': '3px solid #ffd700'
             }
         }
     },
@@ -1531,6 +1579,10 @@ class PushGame {
 // Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new PushGame();
-    // Auto-start game on page load
-    window.game.startNewGame();
+
+    // Handle loading modal
+    document.getElementById('start-game-btn').addEventListener('click', () => {
+        document.getElementById('loading-modal').classList.remove('show');
+        window.game.startNewGame();
+    });
 });

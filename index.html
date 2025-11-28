@@ -7,10 +7,24 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Loading Modal -->
+    <div class="modal show" id="loading-modal">
+        <div class="modal-content loading-content">
+            <img src="assets/logo.png" alt="Kyleigh's Cards" class="loading-logo">
+            <button class="btn play-btn" id="start-game-btn">Play!</button>
+        </div>
+    </div>
+
     <div class="game-container">
         <header>
-            <h1>🃏 Push! 🃏</h1>
-            <p class="subtitle">The Card Game</p>
+            <div class="logo-container">
+                <span class="logo-letter" style="--i: 0">P</span>
+                <span class="logo-letter" style="--i: 1">U</span>
+                <span class="logo-letter" style="--i: 2">S</span>
+                <span class="logo-letter" style="--i: 3">H</span>
+                <span class="logo-exclaim" style="--i: 4">!</span>
+            </div>
+            <p class="subtitle">By Kyleigh's Cards</p>
         </header>
 
         <div class="game-info">
