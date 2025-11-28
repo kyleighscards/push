@@ -1320,7 +1320,7 @@ class PushGame {
 
         this.renderPilesHTML();
         this.renderPiles();
-        this.updateCounts();
+        this.updateUI();
         this.setStatus(this.isMyTurn ? 'Your turn!' : `${opponentName}'s turn...`);
 
         if (this.isMyTurn) {
