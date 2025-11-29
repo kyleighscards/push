@@ -1476,9 +1476,11 @@ class PushGame {
     }
 
     async submitUsername() {
+        console.log('submitUsername called');
         const adj = document.getElementById('name-adjective').value;
         const noun = document.getElementById('name-noun').value;
         const error = document.getElementById('username-error');
+        console.log('Selected values:', { adj, noun });
 
         // Validate - both must be selected
         if (!adj || !noun) {
