@@ -1439,12 +1439,12 @@ class PushGame {
         }
     }
 
-    getThemeSuggestion(adj, noun) {
-        // Check if either word suggests a theme
+    getNameThemeSuggestion(adj, noun) {
+        // Check if either word suggests a theme based on name selection
         const adjTheme = THEME_NAME_HINTS[adj];
         const nounTheme = THEME_NAME_HINTS[noun];
 
-        console.log('Theme suggestion check:', { adj, noun, adjTheme, nounTheme });
+        console.log('Name theme suggestion check:', { adj, noun, adjTheme, nounTheme });
 
         // Prefer noun theme, fall back to adjective theme
         return nounTheme || adjTheme || null;
@@ -1494,9 +1494,9 @@ class PushGame {
             error.textContent = '';
             this.pendingUsername = `${adj} ${noun}`;
 
-            // Check for theme suggestion
-            console.log('About to call getThemeSuggestion');
-            const suggestedTheme = this.getThemeSuggestion(adj, noun);
+            // Check for theme suggestion based on name
+            console.log('About to call getNameThemeSuggestion');
+            const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
             console.log('suggestedTheme:', suggestedTheme);
 
             if (suggestedTheme && typeof suggestedTheme === 'string') {
