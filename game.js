@@ -1420,8 +1420,8 @@ class PushGame {
     }
 
     handleMultiplayerWin(didIWin) {
-        // Don't show win modal if game isn't active (prevents stale Firebase data)
-        if (!this.gameActive) return;
+        // Prevent showing duplicate win modals
+        if (document.getElementById('win-modal').classList.contains('show')) return;
 
         this.gameActive = false;
 
@@ -2394,7 +2394,8 @@ class PushGame {
         if (this.playerDeck.length === 0 && !this.currentCard) {
             this.gameActive = false;
             if (this.isMultiplayerGame) {
-                // In multiplayer, notify Firebase that I won
+                // In multiplayer, show win locally AND notify Firebase
+                this.handleMultiplayerWin(true);
                 this.multiplayer.setWinner(true);
             } else {
                 this.showWinModal(true);
@@ -2404,7 +2405,8 @@ class PushGame {
         if (this.opponentDeck.length === 0) {
             this.gameActive = false;
             if (this.isMultiplayerGame) {
-                // In multiplayer, notify Firebase that opponent won
+                // In multiplayer, show loss locally AND notify Firebase
+                this.handleMultiplayerWin(false);
                 this.multiplayer.setWinner(false);
             } else {
                 this.showWinModal(false);
