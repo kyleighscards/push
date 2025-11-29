@@ -2501,7 +2501,7 @@ class PushGame {
         return activePiles === pileCount && pilesAtTwo === pileCount;
     }
 
-    // Show "Watch out!!!" hint with smoke effect
+    // Show "Watch out!" hint with slam effect
     showWatchOutHint() {
         // Prevent showing multiple times in a row
         if (this.poisonHintShown) return;
@@ -2509,22 +2509,20 @@ class PushGame {
 
         // Create container
         const container = document.createElement('div');
-        container.className = 'poison-hint-container';
+        container.className = 'watchout-hint-container';
 
-        // Create smoke particles
-        for (let i = 0; i < 20; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'smoke-particle';
-            particle.style.left = `${Math.random() * 100}%`;
-            particle.style.animationDelay = `${Math.random() * 0.5}s`;
-            particle.style.animationDuration = `${1.5 + Math.random()}s`;
-            container.appendChild(particle);
+        // Create slam burst lines
+        for (let i = 0; i < 12; i++) {
+            const line = document.createElement('div');
+            line.className = 'slam-line';
+            line.style.transform = `rotate(${i * 30}deg)`;
+            container.appendChild(line);
         }
 
         // Create text
         const text = document.createElement('div');
-        text.className = 'poison-hint-text';
-        text.innerHTML = '⚠️ Watch out!!! ⚠️';
+        text.className = 'watchout-hint-text';
+        text.textContent = 'Watch out!';
         container.appendChild(text);
 
         document.body.appendChild(container);
@@ -2533,7 +2531,7 @@ class PushGame {
         setTimeout(() => {
             container.remove();
             this.poisonHintShown = false;
-        }, 3000);
+        }, 2000);
     }
 
     animatePileTake(pileIndex, toPlayer, playerJustPlayed) {
