@@ -1205,11 +1205,15 @@ class PushGame {
         this.settings = {
             pileCount: 3,
             jackOnJack: true,
-            skillLevel: 'expert'  // 'kid', 'fun', 'expert'
+            skillLevel: 'expert',  // 'kid', 'fun', 'expert'
+            hintsAndTips: true     // Show fun hints during special moments
         };
 
         // For Expert mode status display
         this.lastExpertRule = '';
+
+        // For hints system
+        this.poisonHintShown = false;
 
         this.playerDeck = [];
         this.opponentDeck = [];
@@ -1369,6 +1373,7 @@ class PushGame {
         this.currentCard = null;
         this.gameActive = true;
         this.currentTurnPlayer = isHost ? 'player' : 'opponent';
+        this.poisonHintShown = false;
 
         // Close all modals
         document.getElementById('mode-modal').classList.remove('show');
@@ -1522,6 +1527,7 @@ class PushGame {
         const pileCountSelect = document.getElementById('pile-count');
         const jackOnJackToggle = document.getElementById('jack-on-jack');
         const skillLevelSelect = document.getElementById('skill-level');
+        const hintsToggle = document.getElementById('hints-and-tips');
 
         if (pileCountSelect) {
             pileCountSelect.value = this.settings.pileCount.toString();
@@ -1531,6 +1537,9 @@ class PushGame {
         }
         if (skillLevelSelect) {
             skillLevelSelect.value = this.settings.skillLevel;
+        }
+        if (hintsToggle) {
+            hintsToggle.checked = this.settings.hintsAndTips;
         }
     }
 
@@ -1791,6 +1800,11 @@ class PushGame {
             this.saveSettings();
         });
 
+        document.getElementById('hints-and-tips').addEventListener('change', (e) => {
+            this.settings.hintsAndTips = e.target.checked;
+            this.saveSettings();
+        });
+
         // Close modals when clicking outside
         document.getElementById('rules-modal').addEventListener('click', (e) => {
             if (e.target.id === 'rules-modal') this.hideRules();
@@ -1858,6 +1872,7 @@ class PushGame {
         this.isPlayerTurn = true;
         this.currentTurnPlayer = 'player';
         this.gameActive = true;
+        this.poisonHintShown = false;
 
         // Render piles HTML based on pile count
         this.renderPilesHTML();
@@ -2021,6 +2036,11 @@ class PushGame {
 
         this.renderPiles();
         this.updateUI();
+
+        // Check for hints (e.g., all piles at "2 to push")
+        if (this.checkAllPilesAtTwoToPush()) {
+            this.showChooseYourPoison();
+        }
 
         // Check win condition
         if (this.checkWinCondition()) return;
@@ -2447,6 +2467,64 @@ class PushGame {
         setTimeout(() => {
             popup.remove();
         }, 1500);
+    }
+
+    // Check if all piles are at "2 to push" for hints feature
+    checkAllPilesAtTwoToPush() {
+        if (!this.settings.hintsAndTips) return false;
+
+        const pileCount = this.settings.pileCount;
+        let pilesAtTwo = 0;
+        let activePiles = 0;
+
+        for (let i = 0; i < pileCount; i++) {
+            const pileState = this.pileStates[i];
+            if (pileState) {
+                activePiles++;
+                const remaining = pileState.targetCount - pileState.count;
+                if (remaining === 2) {
+                    pilesAtTwo++;
+                }
+            }
+        }
+
+        // All piles must be active AND all at exactly 2 to push
+        return activePiles === pileCount && pilesAtTwo === pileCount;
+    }
+
+    // Show "Choose your poison!" hint with green smoke effect
+    showChooseYourPoison() {
+        // Prevent showing multiple times in a row
+        if (this.poisonHintShown) return;
+        this.poisonHintShown = true;
+
+        // Create container
+        const container = document.createElement('div');
+        container.className = 'poison-hint-container';
+
+        // Create smoke particles
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'smoke-particle';
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.animationDelay = `${Math.random() * 0.5}s`;
+            particle.style.animationDuration = `${1.5 + Math.random()}s`;
+            container.appendChild(particle);
+        }
+
+        // Create text
+        const text = document.createElement('div');
+        text.className = 'poison-hint-text';
+        text.innerHTML = '☠️ Choose your poison! ☠️';
+        container.appendChild(text);
+
+        document.body.appendChild(container);
+
+        // Remove after animation
+        setTimeout(() => {
+            container.remove();
+            this.poisonHintShown = false;
+        }, 3000);
     }
 
     animatePileTake(pileIndex, toPlayer, playerJustPlayed) {
