@@ -1968,9 +1968,9 @@ class PushGame {
 
                 // Jack on Jack special rule (if enabled)
                 if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) {
-                    // Jack on Jack = the OTHER player takes pile (PUSH!)
-                    this.showPushPopup();
-                    this.setStatus(isPlayer ? "Jack on Jack! Opponent takes the pile!" : "Jack on Jack! You take the pile!");
+                    // Jack on Jack = the OTHER player takes pile (JACKED!)
+                    this.showPushPopup('JACKED!');
+                    this.setStatus(isPlayer ? "You got JACKED! Opponent takes the pile!" : "You got JACKED! You take the pile!");
 
                     setTimeout(() => {
                         // isPlayer played Jack on Jack, so opponent takes pile
@@ -2460,10 +2460,10 @@ class PushGame {
         document.getElementById('status').textContent = message;
     }
 
-    showPushPopup() {
+    showPushPopup(message = 'PUSH!') {
         const popup = document.createElement('div');
         popup.className = 'push-popup';
-        popup.textContent = 'PUSH!';
+        popup.textContent = message;
         document.body.appendChild(popup);
 
         setTimeout(() => {
