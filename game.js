@@ -1477,30 +1477,41 @@ class PushGame {
 
     async submitUsername() {
         console.log('submitUsername called');
-        const adj = document.getElementById('name-adjective').value;
-        const noun = document.getElementById('name-noun').value;
-        const error = document.getElementById('username-error');
-        console.log('Selected values:', { adj, noun });
+        try {
+            const adj = document.getElementById('name-adjective').value;
+            const noun = document.getElementById('name-noun').value;
+            const error = document.getElementById('username-error');
+            console.log('Selected values:', { adj, noun });
 
-        // Validate - both must be selected
-        if (!adj || !noun) {
-            error.textContent = 'Please pick both an adjective and a noun!';
-            return;
-        }
+            // Validate - both must be selected
+            if (!adj || !noun) {
+                error.textContent = 'Please pick both an adjective and a noun!';
+                console.log('Validation failed - missing adj or noun');
+                return;
+            }
 
-        error.textContent = '';
-        this.pendingUsername = `${adj} ${noun}`;
+            console.log('Validation passed, setting pendingUsername');
+            error.textContent = '';
+            this.pendingUsername = `${adj} ${noun}`;
 
-        // Check for theme suggestion
-        const suggestedTheme = this.getThemeSuggestion(adj, noun);
-        if (suggestedTheme && typeof suggestedTheme === 'string') {
-            const themeName = this.getThemeDisplayName(suggestedTheme);
-            this.pendingThemeSuggestion = suggestedTheme;
-            document.getElementById('name-theme-message').innerHTML =
-                `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
-            document.getElementById('name-theme-modal').classList.add('show');
-        } else {
-            await this.completeUsernameSubmission();
+            // Check for theme suggestion
+            console.log('About to call getThemeSuggestion');
+            const suggestedTheme = this.getThemeSuggestion(adj, noun);
+            console.log('suggestedTheme:', suggestedTheme);
+
+            if (suggestedTheme && typeof suggestedTheme === 'string') {
+                const themeName = this.getThemeDisplayName(suggestedTheme);
+                console.log('Theme name:', themeName);
+                this.pendingThemeSuggestion = suggestedTheme;
+                document.getElementById('name-theme-message').innerHTML =
+                    `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
+                document.getElementById('name-theme-modal').classList.add('show');
+            } else {
+                console.log('No theme suggestion, completing submission');
+                await this.completeUsernameSubmission();
+            }
+        } catch (err) {
+            console.error('Error in submitUsername:', err);
         }
     }
 
