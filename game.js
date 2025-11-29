@@ -804,6 +804,7 @@ class MultiplayerManager {
 
         clearInterval(this.inviteTimeout);
         document.getElementById('invite-modal').classList.remove('show');
+        document.getElementById('win-modal').classList.remove('show');
 
         const inviteSnap = await database.ref(`invites/${this.pendingInviteId}`).once('value');
         const invite = inviteSnap.val();
