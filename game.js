@@ -1000,16 +1000,26 @@ class MultiplayerManager {
             }
         });
 
-        // Listen for game end
+        // Listen for game end - skip initial value, only react to changes
+        let winnerInitialLoad = true;
         gameRef.child('winner').on('value', (snapshot) => {
+            if (winnerInitialLoad) {
+                winnerInitialLoad = false;
+                return;
+            }
             const winner = snapshot.val();
             if (winner) {
                 this.game.handleMultiplayerWin(winner === this.getPlayerRole());
             }
         });
 
-        // Listen for opponent leaving
+        // Listen for opponent leaving - skip initial value
+        let statusInitialLoad = true;
         gameRef.child('status').on('value', (snapshot) => {
+            if (statusInitialLoad) {
+                statusInitialLoad = false;
+                return;
+            }
             const status = snapshot.val();
             if (status === 'abandoned') {
                 this.game.handleOpponentLeft();
