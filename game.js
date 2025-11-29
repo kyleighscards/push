@@ -1,86 +1,96 @@
 // Push! Card Game - JavaScript Implementation
 
-// Name picker lists for username selection
+// Name picker lists for username selection (20 each, all with theme suggestions)
 const NAME_ADJECTIVES = [
-    // Fun general adjectives
-    'Silly', 'Wacky', 'Zany', 'Giggly', 'Bouncy', 'Sparkly', 'Dizzy', 'Fluffy',
-    'Sneaky', 'Speedy', 'Lazy', 'Crazy', 'Happy', 'Grumpy', 'Sleepy', 'Jumpy',
-    'Wiggly', 'Wobbly', 'Zippy', 'Fuzzy', 'Mighty', 'Tiny', 'Giant', 'Cosmic',
-    // Color adjectives
-    'Golden', 'Silver', 'Rainbow', 'Purple', 'Green', 'Blue', 'Pink', 'Orange',
-    // Theme-related adjectives (with theme hints)
-    'Galactic', 'Stellar', 'Lunar',      // space-adventure
-    'Magical', 'Enchanted', 'Mystical',  // unicorns
-    'Tropical', 'Sunny',                  // bananas
-    'Robotic', 'Electric', 'Cyber',      // robot, electronics
-    'Wild', 'Fierce', 'Hungry',          // shark, cat, dog
-    'Royal', 'Fancy', 'Dazzling',        // girl
-    'Turbo', 'Super', 'Mega',            // boy, video-game
-    'Spooky', 'Ghostly',                 // october
-    'Frosty', 'Snowy', 'Icy',            // january, december
-    'Blooming', 'Sunny'                   // flower, outdoor
+    'Silly',      // (fun)
+    'Wacky',      // (fun)
+    'Sparkly',    // unicorns
+    'Galactic',   // space-adventure
+    'Magical',    // unicorns
+    'Tropical',   // bananas
+    'Robotic',    // robot
+    'Wild',       // shark
+    'Royal',      // girl
+    'Turbo',      // video-game
+    'Spooky',     // october
+    'Frosty',     // december
+    'Blooming',   // flower
+    'Fierce',     // shark
+    'Electric',   // electronics
+    'Outdoor',    // outdoor
+    'Musical',    // instruments
+    'Brainy',     // science
+    'Knightly',   // sword
+    'Adventurous' // trip
 ];
 
 const NAME_NOUNS = [
-    // Fun general nouns
-    'Potato', 'Pancake', 'Noodle', 'Pickle', 'Muffin', 'Nugget', 'Taco', 'Waffle',
-    'Penguin', 'Dolphin', 'Llama', 'Panda', 'Koala', 'Sloth', 'Otter', 'Hedgehog',
-    'Tornado', 'Volcano', 'Thunder', 'Comet', 'Blizzard',
-    'Ninja', 'Pirate', 'Wizard', 'Dragon', 'Knight',
-    'Banana', 'Coconut', 'Mango', 'Cherry', 'Lemon',
-    'Wrench', 'Hammer', 'Rocket', 'Balloon', 'Bubble',
-    // Theme-related nouns (with theme hints)
-    'Astronaut', 'Martian', 'Nebula', 'Comet', 'Vader',    // space-adventure
-    'Unicorn', 'Pegasus', 'Sparkle', 'Rainbow',             // unicorns
-    'Monkey', 'Gorilla',                                     // bananas
-    'Robot', 'Android', 'Circuit',                           // robot
-    'Shark', 'Jaws', 'Fin',                                  // shark
-    'Kitten', 'Whiskers', 'Paws',                            // cat
-    'Puppy', 'Woof', 'Bones',                                // dog
-    'Sword', 'Shield', 'Castle',                             // sword
-    'Blossom', 'Petal', 'Daisy', 'Rose',                    // flower
-    'Princess', 'Tiara', 'Glitter',                          // girl
-    'Champion', 'Racer', 'Blaster',                          // boy
-    'Gamer', 'Player', 'Quest',                              // video-game
-    'Explorer', 'Voyager', 'Camper',                         // trip, outdoor
-    'Beaker', 'Atom', 'Lab',                                 // science
-    'Pixel', 'Byte', 'Chip',                                 // electronics
-    'Guitar', 'Drums', 'Piano',                              // instruments
-    'Ghost', 'Pumpkin', 'Spider',                            // october
-    'Snowflake', 'Reindeer', 'Elf', 'Gingerbread'           // december
+    'Potato',     // (fun)
+    'Pancake',    // (fun)
+    'Unicorn',    // unicorns
+    'Astronaut',  // space-adventure
+    'Banana',     // bananas
+    'Robot',      // robot
+    'Shark',      // shark
+    'Kitten',     // cat
+    'Puppy',      // dog
+    'Princess',   // girl
+    'Gamer',      // video-game
+    'Ghost',      // october
+    'Snowflake',  // december
+    'Blossom',    // flower
+    'Pixel',      // electronics
+    'Camper',     // outdoor
+    'Guitar',     // instruments
+    'Beaker',     // science
+    'Knight',     // sword
+    'Explorer'    // trip
 ];
 
-// Map themed names to theme suggestions
+// Map themed names to theme suggestions (all 40 names have themes)
 const THEME_NAME_HINTS = {
-    // Adjectives that suggest themes
-    'Galactic': 'space-adventure', 'Stellar': 'space-adventure', 'Lunar': 'space-adventure',
-    'Magical': 'unicorns', 'Enchanted': 'unicorns', 'Mystical': 'unicorns',
-    'Tropical': 'bananas', 'Robotic': 'robot', 'Electric': 'electronics', 'Cyber': 'robot',
-    'Wild': 'shark', 'Fierce': 'shark', 'Hungry': 'shark',
-    'Royal': 'girl', 'Fancy': 'girl', 'Dazzling': 'girl',
-    'Spooky': 'october', 'Ghostly': 'october',
-    'Frosty': 'december', 'Snowy': 'january', 'Icy': 'january',
+    // Adjectives
+    'Silly': 'bananas',
+    'Wacky': 'bananas',
+    'Sparkly': 'unicorns',
+    'Galactic': 'space-adventure',
+    'Magical': 'unicorns',
+    'Tropical': 'bananas',
+    'Robotic': 'robot',
+    'Wild': 'shark',
+    'Royal': 'girl',
+    'Turbo': 'video-game',
+    'Spooky': 'october',
+    'Frosty': 'december',
     'Blooming': 'flower',
-    // Nouns that suggest themes
-    'Astronaut': 'space-adventure', 'Martian': 'space-adventure', 'Nebula': 'space-adventure',
-    'Comet': 'space-adventure', 'Vader': 'space-adventure',
-    'Unicorn': 'unicorns', 'Pegasus': 'unicorns', 'Sparkle': 'unicorns', 'Rainbow': 'unicorns',
-    'Monkey': 'bananas', 'Gorilla': 'bananas', 'Banana': 'bananas', 'Coconut': 'bananas',
-    'Robot': 'robot', 'Android': 'robot', 'Circuit': 'robot',
-    'Shark': 'shark', 'Jaws': 'shark', 'Fin': 'shark',
-    'Kitten': 'cat', 'Whiskers': 'cat', 'Paws': 'cat',
-    'Puppy': 'dog', 'Woof': 'dog', 'Bones': 'dog',
-    'Sword': 'sword', 'Shield': 'sword', 'Castle': 'sword',
-    'Blossom': 'flower', 'Petal': 'flower', 'Daisy': 'flower', 'Rose': 'flower',
-    'Princess': 'girl', 'Tiara': 'girl', 'Glitter': 'girl',
-    'Champion': 'boy', 'Racer': 'boy', 'Blaster': 'boy',
-    'Gamer': 'video-game', 'Player': 'video-game', 'Quest': 'video-game',
-    'Explorer': 'trip', 'Voyager': 'trip', 'Camper': 'outdoor',
-    'Beaker': 'science', 'Atom': 'science', 'Lab': 'science',
-    'Pixel': 'electronics', 'Byte': 'electronics', 'Chip': 'electronics',
-    'Guitar': 'instruments', 'Drums': 'instruments', 'Piano': 'instruments',
-    'Ghost': 'october', 'Pumpkin': 'october', 'Spider': 'october',
-    'Snowflake': 'december', 'Reindeer': 'december', 'Elf': 'december', 'Gingerbread': 'december'
+    'Fierce': 'shark',
+    'Electric': 'electronics',
+    'Outdoor': 'outdoor',
+    'Musical': 'instruments',
+    'Brainy': 'science',
+    'Knightly': 'sword',
+    'Adventurous': 'trip',
+    // Nouns
+    'Potato': 'bananas',
+    'Pancake': 'bananas',
+    'Unicorn': 'unicorns',
+    'Astronaut': 'space-adventure',
+    'Banana': 'bananas',
+    'Robot': 'robot',
+    'Shark': 'shark',
+    'Kitten': 'cat',
+    'Puppy': 'dog',
+    'Princess': 'girl',
+    'Gamer': 'video-game',
+    'Ghost': 'october',
+    'Snowflake': 'december',
+    'Blossom': 'flower',
+    'Pixel': 'electronics',
+    'Camper': 'outdoor',
+    'Guitar': 'instruments',
+    'Beaker': 'science',
+    'Knight': 'sword',
+    'Explorer': 'trip'
 };
 
 // Theme definitions
@@ -1444,8 +1454,6 @@ class PushGame {
         const adjTheme = THEME_NAME_HINTS[adj];
         const nounTheme = THEME_NAME_HINTS[noun];
 
-        console.log('Name theme suggestion check:', { adj, noun, adjTheme, nounTheme });
-
         // Prefer noun theme, fall back to adjective theme
         return nounTheme || adjTheme || null;
     }
@@ -1476,42 +1484,30 @@ class PushGame {
     }
 
     async submitUsername() {
-        console.log('submitUsername called');
-        try {
-            const adj = document.getElementById('name-adjective').value;
-            const noun = document.getElementById('name-noun').value;
-            const error = document.getElementById('username-error');
-            console.log('Selected values:', { adj, noun });
+        const adj = document.getElementById('name-adjective').value;
+        const noun = document.getElementById('name-noun').value;
+        const error = document.getElementById('username-error');
 
-            // Validate - both must be selected
-            if (!adj || !noun) {
-                error.textContent = 'Please pick both an adjective and a noun!';
-                console.log('Validation failed - missing adj or noun');
-                return;
-            }
+        // Validate - both must be selected
+        if (!adj || !noun) {
+            error.textContent = 'Please pick both an adjective and a noun!';
+            return;
+        }
 
-            console.log('Validation passed, setting pendingUsername');
-            error.textContent = '';
-            this.pendingUsername = `${adj} ${noun}`;
+        error.textContent = '';
+        this.pendingUsername = `${adj} ${noun}`;
 
-            // Check for theme suggestion based on name
-            console.log('About to call getNameThemeSuggestion');
-            const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
-            console.log('suggestedTheme:', suggestedTheme);
+        // Check for theme suggestion based on name
+        const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
 
-            if (suggestedTheme && typeof suggestedTheme === 'string') {
-                const themeName = this.getThemeDisplayName(suggestedTheme);
-                console.log('Theme name:', themeName);
-                this.pendingThemeSuggestion = suggestedTheme;
-                document.getElementById('name-theme-message').innerHTML =
-                    `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
-                document.getElementById('name-theme-modal').classList.add('show');
-            } else {
-                console.log('No theme suggestion, completing submission');
-                await this.completeUsernameSubmission();
-            }
-        } catch (err) {
-            console.error('Error in submitUsername:', err);
+        if (suggestedTheme && typeof suggestedTheme === 'string') {
+            const themeName = this.getThemeDisplayName(suggestedTheme);
+            this.pendingThemeSuggestion = suggestedTheme;
+            document.getElementById('name-theme-message').innerHTML =
+                `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
+            document.getElementById('name-theme-modal').classList.add('show');
+        } else {
+            await this.completeUsernameSubmission();
         }
     }
 
