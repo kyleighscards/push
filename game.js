@@ -1301,10 +1301,11 @@ class PushGame {
     startMultiplayerGame(myDeck, opponentName, isHost) {
         this.isMultiplayerGame = true;
         this.isMyTurn = isHost; // Host (player1) goes first
+        this.isPlayerTurn = isHost; // Also set isPlayerTurn for consistency
 
         // Set up decks
         this.playerDeck = [...myDeck];
-        this.opponentDeck = Array(26 - myDeck.length + 26).fill(null); // Placeholder for opponent deck size
+        this.opponentDeck = Array(26).fill(null); // Opponent has 26 cards (placeholder for count display)
 
         // Initialize piles
         const pileCount = this.settings.pileCount;
@@ -1313,6 +1314,13 @@ class PushGame {
 
         this.currentCard = null;
         this.gameActive = true;
+        this.currentTurnPlayer = isHost ? 'player' : 'opponent';
+
+        // Close all modals
+        document.getElementById('mode-modal').classList.remove('show');
+        document.getElementById('lobby-modal').classList.remove('show');
+        document.getElementById('waiting-modal').classList.remove('show');
+        document.getElementById('invite-modal').classList.remove('show');
 
         // Update opponent name display
         document.querySelector('.player-info.opponent .player-name').innerHTML =
@@ -1333,6 +1341,13 @@ class PushGame {
 
         const card = move.card;
         const pileIndex = move.pile;
+
+        // Mark opponent as playing and decrement their deck count
+        this.currentTurnPlayer = 'opponent';
+        if (this.opponentDeck.length > 0) {
+            this.opponentDeck.pop(); // Decrement opponent deck count
+        }
+        this.updateUI();
 
         // Animate the opponent's card
         this.animateCardToPlay(card, pileIndex, 'opponent', () => {
@@ -1788,7 +1803,9 @@ class PushGame {
     }
 
     drawCard() {
-        if (!this.gameActive || !this.isPlayerTurn || this.currentCard) return;
+        // Check turn based on game mode
+        const canDraw = this.isMultiplayerGame ? this.isMyTurn : this.isPlayerTurn;
+        if (!this.gameActive || !canDraw || this.currentCard) return;
 
         if (this.playerDeck.length === 0) {
             this.checkWinCondition();
@@ -2264,12 +2281,22 @@ class PushGame {
     checkWinCondition() {
         if (this.playerDeck.length === 0 && !this.currentCard) {
             this.gameActive = false;
-            this.showWinModal(true);
+            if (this.isMultiplayerGame) {
+                // In multiplayer, notify Firebase that I won
+                this.multiplayer.setWinner(true);
+            } else {
+                this.showWinModal(true);
+            }
             return true;
         }
         if (this.opponentDeck.length === 0) {
             this.gameActive = false;
-            this.showWinModal(false);
+            if (this.isMultiplayerGame) {
+                // In multiplayer, notify Firebase that opponent won
+                this.multiplayer.setWinner(false);
+            } else {
+                this.showWinModal(false);
+            }
             return true;
         }
         return false;
@@ -2400,12 +2427,15 @@ class PushGame {
                 // I just finished, opponent's turn
                 this.currentTurnPlayer = 'opponent';
                 this.isMyTurn = false;
+                this.isPlayerTurn = false;
                 this.setStatus(`${this.multiplayer.opponentUsername}'s turn...`);
                 // Don't call opponentTurn() - wait for Firebase update
             } else {
                 // Opponent just finished, my turn
                 this.currentTurnPlayer = 'player';
                 this.isMyTurn = true;
+                this.isPlayerTurn = true;
+                this.setStatus('Your turn!');
                 setTimeout(() => this.drawCard(), 300);
             }
         } else {
