@@ -1433,19 +1433,24 @@ class PushGame {
         const adj = document.getElementById('name-adjective').value;
         const noun = document.getElementById('name-noun').value;
         const preview = document.getElementById('name-preview');
+        const submitBtn = document.getElementById('username-submit');
 
         if (adj && noun) {
             preview.textContent = `${adj} ${noun}`;
             preview.classList.add('has-name');
+            submitBtn.textContent = "Let's Play!";
         } else if (adj) {
             preview.textContent = `${adj} ...`;
             preview.classList.remove('has-name');
+            submitBtn.textContent = 'Random Name';
         } else if (noun) {
             preview.textContent = `... ${noun}`;
             preview.classList.remove('has-name');
+            submitBtn.textContent = 'Random Name';
         } else {
             preview.textContent = 'Your name will appear here';
             preview.classList.remove('has-name');
+            submitBtn.textContent = 'Random Name';
         }
     }
 
@@ -1484,14 +1489,36 @@ class PushGame {
     }
 
     async submitUsername() {
-        const adj = document.getElementById('name-adjective').value;
-        const noun = document.getElementById('name-noun').value;
+        let adj = document.getElementById('name-adjective').value;
+        let noun = document.getElementById('name-noun').value;
         const error = document.getElementById('username-error');
 
-        // Validate - both must be selected
+        // If either is missing, select random values and apply matching theme
         if (!adj || !noun) {
-            error.textContent = 'Please pick both an adjective and a noun!';
-            return;
+            const adjSelect = document.getElementById('name-adjective');
+            const nounSelect = document.getElementById('name-noun');
+
+            // Select random values for any missing selections
+            if (!adj) {
+                const randomAdj = NAME_ADJECTIVES[Math.floor(Math.random() * NAME_ADJECTIVES.length)];
+                adjSelect.value = randomAdj;
+                adj = randomAdj;
+            }
+            if (!noun) {
+                const randomNoun = NAME_NOUNS[Math.floor(Math.random() * NAME_NOUNS.length)];
+                nounSelect.value = randomNoun;
+                noun = randomNoun;
+            }
+
+            // Update the preview
+            this.updateNamePreview();
+
+            // Auto-apply matching theme (no confirmation prompt for random)
+            const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
+            if (suggestedTheme && typeof suggestedTheme === 'string' && suggestedTheme !== this.currentTheme.id) {
+                const setId = this.getThemeSetForTheme(suggestedTheme);
+                this.applyTheme(setId, suggestedTheme);
+            }
         }
 
         error.textContent = '';
@@ -1500,12 +1527,25 @@ class PushGame {
         // Check for theme suggestion based on name
         const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
 
-        if (suggestedTheme && typeof suggestedTheme === 'string' && suggestedTheme !== this.currentTheme.id) {
-            const themeName = this.getThemeDisplayName(suggestedTheme);
-            this.pendingThemeSuggestion = suggestedTheme;
-            document.getElementById('name-theme-message').innerHTML =
-                `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
-            document.getElementById('name-theme-modal').classList.add('show');
+        if (suggestedTheme && typeof suggestedTheme === 'string') {
+            if (suggestedTheme === this.currentTheme.id) {
+                // Theme already matches - show confirmation message
+                const themeName = this.getThemeDisplayName(suggestedTheme);
+                document.getElementById('name-theme-message').innerHTML =
+                    `<strong>That name matches your theme perfectly!</strong>`;
+                document.getElementById('accept-name-theme-btn').style.display = 'none';
+                document.getElementById('decline-name-theme-btn').textContent = 'Awesome!';
+                document.getElementById('name-theme-modal').classList.add('show');
+            } else {
+                // Suggest theme switch
+                const themeName = this.getThemeDisplayName(suggestedTheme);
+                this.pendingThemeSuggestion = suggestedTheme;
+                document.getElementById('name-theme-message').innerHTML =
+                    `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
+                document.getElementById('accept-name-theme-btn').style.display = '';
+                document.getElementById('decline-name-theme-btn').textContent = 'No thanks';
+                document.getElementById('name-theme-modal').classList.add('show');
+            }
         } else {
             await this.completeUsernameSubmission();
         }
@@ -1968,12 +2008,21 @@ class PushGame {
             card.addEventListener('click', () => {
                 const setId = card.dataset.set;
                 const themeId = card.dataset.theme;
-                this.applyTheme(setId, themeId);
-                // Update selection state
+                // Store pending selection instead of applying immediately
+                this.pendingThemeSelection = { set: setId, id: themeId };
+                // Update visual selection state
                 grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
             });
         });
+    }
+
+    confirmThemeSelection() {
+        if (this.pendingThemeSelection) {
+            this.applyTheme(this.pendingThemeSelection.set, this.pendingThemeSelection.id);
+            this.pendingThemeSelection = null;
+        }
+        document.getElementById('theme-modal').classList.remove('show');
     }
 
     initializeEventListeners() {
@@ -2016,9 +2065,13 @@ class PushGame {
             if (e.target.id === 'settings-modal') this.hideSettings();
         });
 
+        // Change name button
+        document.getElementById('change-name-btn').addEventListener('click', () => this.showChangeNameModal());
+
         // Theme modal listeners
         document.getElementById('theme-btn').addEventListener('click', () => this.showThemeModal());
         document.getElementById('close-theme').addEventListener('click', () => this.hideThemeModal());
+        document.getElementById('theme-select-btn').addEventListener('click', () => this.confirmThemeSelection());
         document.getElementById('theme-modal').addEventListener('click', (e) => {
             if (e.target.id === 'theme-modal') this.hideThemeModal();
         });
@@ -2035,6 +2088,27 @@ class PushGame {
 
     hideSettings() {
         document.getElementById('settings-modal').classList.remove('show');
+    }
+
+    showChangeNameModal() {
+        // Reset the dropdowns to show current name if we have one
+        const currentName = this.multiplayer?.username;
+        if (currentName) {
+            const parts = currentName.split(' ');
+            if (parts.length >= 2) {
+                const adjSelect = document.getElementById('name-adjective');
+                const nounSelect = document.getElementById('name-noun');
+                // Try to set the values if they exist in the lists
+                if (NAME_ADJECTIVES.includes(parts[0])) {
+                    adjSelect.value = parts[0];
+                }
+                if (NAME_NOUNS.includes(parts[1])) {
+                    nounSelect.value = parts[1];
+                }
+            }
+        }
+        this.updateNamePreview();
+        document.getElementById('username-modal').classList.add('show');
     }
 
     createDeck() {

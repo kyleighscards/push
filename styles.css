@@ -818,6 +818,14 @@ header h1 {
     color: rgba(255,255,255,0.9);
 }
 
+.theme-select-btn {
+    display: block;
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    font-size: 1.1rem;
+}
+
 /* Theme Suggestion Modal */
 .theme-suggestion-modal {
     display: none;
