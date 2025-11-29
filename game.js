@@ -1008,6 +1008,24 @@ class MultiplayerManager {
             }
         });
 
+        // Listen for opponent leaving
+        gameRef.child('status').on('value', (snapshot) => {
+            const status = snapshot.val();
+            if (status === 'abandoned') {
+                this.game.handleOpponentLeft();
+            }
+        });
+
+        // Also listen for opponent going offline
+        if (this.opponentId) {
+            database.ref(`users/${this.opponentId}/online`).on('value', (snapshot) => {
+                const online = snapshot.val();
+                if (online === false && this.currentGameId && this.game.gameActive) {
+                    this.game.handleOpponentLeft();
+                }
+            });
+        }
+
         // Show message bar
         document.getElementById('message-bar').style.display = 'block';
     }
@@ -1091,6 +1109,11 @@ class MultiplayerManager {
     async endGame() {
         if (!this.currentGameId) return;
 
+        // Mark game as abandoned so opponent knows
+        if (this.game.gameActive) {
+            await database.ref(`games/${this.currentGameId}/status`).set('abandoned');
+        }
+
         // Update user status
         if (this.userId) {
             await database.ref(`users/${this.userId}`).update({ inGame: null });
@@ -1098,6 +1121,9 @@ class MultiplayerManager {
 
         // Clean up listeners
         database.ref(`games/${this.currentGameId}`).off();
+        if (this.opponentId) {
+            database.ref(`users/${this.opponentId}/online`).off();
+        }
 
         // Hide message bar
         document.getElementById('message-bar').style.display = 'none';
@@ -1369,6 +1395,36 @@ class PushGame {
 
         const symbols = didIWin ? ['🎉', '🏆', '⭐', '🎊'] : ['😢', '💔', '🙁', '😞'];
         for (let i = 0; i < 20; i++) {
+            const span = document.createElement('span');
+            span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            span.style.cssText = `
+                position: absolute;
+                font-size: ${Math.random() * 20 + 20}px;
+                left: ${Math.random() * 100}%;
+                animation: float ${Math.random() * 2 + 2}s ease-in-out infinite;
+                animation-delay: ${Math.random() * 2}s;
+            `;
+            animationEl.appendChild(span);
+        }
+
+        // End the multiplayer game
+        this.multiplayer.endGame();
+    }
+
+    handleOpponentLeft() {
+        if (!this.isMultiplayerGame || !this.gameActive) return;
+
+        this.gameActive = false;
+
+        const opponentName = this.multiplayer.opponentUsername || 'Opponent';
+        document.getElementById('win-message').textContent = `${opponentName} left the game`;
+        document.getElementById('win-modal').classList.add('show');
+
+        // Show departure animation
+        const animationEl = document.getElementById('win-animation');
+        animationEl.innerHTML = '';
+        const symbols = ['👋', '🚪', '💨', '🏃'];
+        for (let i = 0; i < 15; i++) {
             const span = document.createElement('span');
             span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
             span.style.cssText = `
