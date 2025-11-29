@@ -1444,6 +1444,8 @@ class PushGame {
         const adjTheme = THEME_NAME_HINTS[adj];
         const nounTheme = THEME_NAME_HINTS[noun];
 
+        console.log('Theme suggestion check:', { adj, noun, adjTheme, nounTheme });
+
         // Prefer noun theme, fall back to adjective theme
         return nounTheme || adjTheme || null;
     }
