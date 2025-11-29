@@ -844,10 +844,15 @@ class MultiplayerManager {
     waitForGame(hostId) {
         // Listen for game creation by host
         const gamesRef = database.ref('games').orderByChild('player2').equalTo(this.userId);
+        const waitStartTime = Date.now();
 
         gamesRef.on('child_added', (snapshot) => {
             const game = snapshot.val();
-            if (game.player1 === hostId && game.status === 'playing') {
+            // Check it's from the right host, is currently playing, and was created recently (within last 60 seconds)
+            const gameCreatedAt = game.createdAt || 0;
+            const isRecentGame = (Date.now() - gameCreatedAt) < 60000;
+
+            if (game.player1 === hostId && game.status === 'playing' && isRecentGame && !game.winner) {
                 this.joinGame(snapshot.key, game);
                 gamesRef.off();
             }
@@ -972,11 +977,11 @@ class MultiplayerManager {
         this.opponentId = gameData.player1;
         this.opponentUsername = gameData.player1Username;
 
-        // Start listening to game
-        this.startGameListeners();
-
-        // Initialize local game state (player2 deck)
+        // Initialize local game state FIRST (before listeners can fire)
         this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
+
+        // Then start listening for moves
+        this.startGameListeners();
     }
 
     startGameListeners() {
@@ -984,8 +989,13 @@ class MultiplayerManager {
 
         const gameRef = database.ref(`games/${this.currentGameId}`);
 
-        // Listen for moves
+        // Listen for moves - skip initial value, only react to changes
+        let moveInitialLoad = true;
         gameRef.child('lastMove').on('value', (snapshot) => {
+            if (moveInitialLoad) {
+                moveInitialLoad = false;
+                return;
+            }
             const move = snapshot.val();
             if (move && move.playerId !== this.userId) {
                 this.game.processRemoteMove(move);
