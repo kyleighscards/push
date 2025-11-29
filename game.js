@@ -2511,7 +2511,7 @@ class PushGame {
                 if (pileState) {
                     const remaining = pileState.targetCount - pileState.count;
                     const owner = pileState.playedBy === 'player' ? 'Your' : "Opponent's";
-                    infoContainer.textContent = `${pile.length} cards | ${owner} ${pileState.specialCard}: ${remaining} to push`;
+                    infoContainer.innerHTML = `${pile.length} cards<br>${owner} ${pileState.specialCard}: ${remaining} to push`;
                 } else {
                     infoContainer.textContent = `${pile.length} cards`;
                 }
