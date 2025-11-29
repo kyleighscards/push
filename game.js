@@ -2037,16 +2037,16 @@ class PushGame {
         this.renderPiles();
         this.updateUI();
 
-        // Check for hints (e.g., all piles at "2 to push")
-        if (this.checkAllPilesAtTwoToPush()) {
-            this.showChooseYourPoison();
-        }
-
         // Check win condition
         if (this.checkWinCondition()) return;
 
         // Switch turns - strictly alternate
         this.switchTurn();
+
+        // Check for hints AFTER turn switches (so we warn the player whose turn it now is)
+        if (this.checkAllPilesAtTwoToPush()) {
+            this.showWatchOutHint();
+        }
     }
 
     animateCardToPlay(card, pileIndex, fromWho, callback) {
@@ -2471,9 +2471,16 @@ class PushGame {
         }, 1500);
     }
 
-    // Check if all piles are at "2 to push" for hints feature
+    // Check if all piles are at "2 to push" and player should be warned
     checkAllPilesAtTwoToPush() {
         if (!this.settings.hintsAndTips) return false;
+
+        // Only show to the player whose turn it is
+        const isMyTurn = this.isMultiplayerGame ? this.isMyTurn : this.isPlayerTurn;
+        if (!isMyTurn) return false;
+
+        // Only show if the player does NOT have a special card
+        if (this.currentCard && this.isSpecialCard(this.currentCard)) return false;
 
         const pileCount = this.settings.pileCount;
         let pilesAtTwo = 0;
@@ -2494,8 +2501,8 @@ class PushGame {
         return activePiles === pileCount && pilesAtTwo === pileCount;
     }
 
-    // Show "Choose your poison!" hint with green smoke effect
-    showChooseYourPoison() {
+    // Show "Watch out!!!" hint with smoke effect
+    showWatchOutHint() {
         // Prevent showing multiple times in a row
         if (this.poisonHintShown) return;
         this.poisonHintShown = true;
@@ -2517,7 +2524,7 @@ class PushGame {
         // Create text
         const text = document.createElement('div');
         text.className = 'poison-hint-text';
-        text.innerHTML = '☠️ Choose your poison! ☠️';
+        text.innerHTML = '⚠️ Watch out!!! ⚠️';
         container.appendChild(text);
 
         document.body.appendChild(container);
