@@ -1500,7 +1500,7 @@ class PushGame {
         // Check for theme suggestion based on name
         const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
 
-        if (suggestedTheme && typeof suggestedTheme === 'string') {
+        if (suggestedTheme && typeof suggestedTheme === 'string' && suggestedTheme !== this.currentTheme.id) {
             const themeName = this.getThemeDisplayName(suggestedTheme);
             this.pendingThemeSuggestion = suggestedTheme;
             document.getElementById('name-theme-message').innerHTML =
