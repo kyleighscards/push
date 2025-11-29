@@ -1492,9 +1492,11 @@ class PushGame {
         let adj = document.getElementById('name-adjective').value;
         let noun = document.getElementById('name-noun').value;
         const error = document.getElementById('username-error');
+        let wasRandom = false;
 
         // If either is missing, select random values and apply matching theme
         if (!adj || !noun) {
+            wasRandom = true;
             const adjSelect = document.getElementById('name-adjective');
             const nounSelect = document.getElementById('name-noun');
 
@@ -1515,7 +1517,7 @@ class PushGame {
 
             // Auto-apply matching theme (no confirmation prompt for random)
             const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
-            if (suggestedTheme && typeof suggestedTheme === 'string' && suggestedTheme !== this.currentTheme.id) {
+            if (suggestedTheme && typeof suggestedTheme === 'string') {
                 const setId = this.getThemeSetForTheme(suggestedTheme);
                 this.applyTheme(setId, suggestedTheme);
             }
@@ -1524,13 +1526,18 @@ class PushGame {
         error.textContent = '';
         this.pendingUsername = `${adj} ${noun}`;
 
-        // Check for theme suggestion based on name
+        // For random names, skip the theme suggestion prompts entirely
+        if (wasRandom) {
+            await this.completeUsernameSubmission();
+            return;
+        }
+
+        // Check for theme suggestion based on name (only for manual selections)
         const suggestedTheme = this.getNameThemeSuggestion(adj, noun);
 
         if (suggestedTheme && typeof suggestedTheme === 'string') {
             if (suggestedTheme === this.currentTheme.id) {
                 // Theme already matches - show confirmation message
-                const themeName = this.getThemeDisplayName(suggestedTheme);
                 document.getElementById('name-theme-message').innerHTML =
                     `<strong>That name matches your theme perfectly!</strong>`;
                 document.getElementById('accept-name-theme-btn').style.display = 'none';
