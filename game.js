@@ -1348,6 +1348,7 @@ class PushGame {
         document.getElementById('lobby-modal').classList.remove('show');
         document.getElementById('waiting-modal').classList.remove('show');
         document.getElementById('invite-modal').classList.remove('show');
+        document.getElementById('win-modal').classList.remove('show');
 
         // Update opponent name display
         document.querySelector('.player-info.opponent .player-name').innerHTML =
@@ -1383,6 +1384,9 @@ class PushGame {
     }
 
     handleMultiplayerWin(didIWin) {
+        // Don't show win modal if game isn't active (prevents stale Firebase data)
+        if (!this.gameActive) return;
+
         this.gameActive = false;
 
         const message = didIWin ? 'You Win!' : 'You Lose!';
