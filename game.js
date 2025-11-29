@@ -844,17 +844,20 @@ class MultiplayerManager {
     waitForGame(hostId) {
         // Listen for game creation by host
         const gamesRef = database.ref('games').orderByChild('player2').equalTo(this.userId);
-        const waitStartTime = Date.now();
+        let hasJoined = false;
 
         gamesRef.on('child_added', (snapshot) => {
+            if (hasJoined) return; // Prevent double-joining
+
             const game = snapshot.val();
             // Check it's from the right host, is currently playing, and was created recently (within last 60 seconds)
             const gameCreatedAt = game.createdAt || 0;
             const isRecentGame = (Date.now() - gameCreatedAt) < 60000;
 
             if (game.player1 === hostId && game.status === 'playing' && isRecentGame && !game.winner) {
-                this.joinGame(snapshot.key, game);
+                hasJoined = true;
                 gamesRef.off();
+                this.joinGame(snapshot.key, game);
             }
         });
     }
@@ -1354,10 +1357,14 @@ class PushGame {
         this.playerDeck = [...myDeck];
         this.opponentDeck = Array(26).fill(null); // Opponent has 26 cards (placeholder for count display)
 
-        // Initialize piles
+        // Initialize piles - ensure completely fresh arrays
         const pileCount = this.settings.pileCount;
-        this.piles = Array.from({ length: pileCount }, () => []);
-        this.pileStates = Array.from({ length: pileCount }, () => null);
+        this.piles = [];
+        this.pileStates = [];
+        for (let i = 0; i < pileCount; i++) {
+            this.piles.push([]);
+            this.pileStates.push(null);
+        }
 
         this.currentCard = null;
         this.gameActive = true;
@@ -1386,9 +1393,13 @@ class PushGame {
 
     processRemoteMove(move) {
         if (!this.isMultiplayerGame || this.isMyTurn) return;
+        if (!this.gameActive) return; // Game not ready yet
 
         const card = move.card;
         const pileIndex = move.pile;
+
+        // Validate pile index
+        if (pileIndex < 0 || pileIndex >= this.piles.length) return;
 
         // Mark opponent as playing and decrement their deck count
         this.currentTurnPlayer = 'opponent';
