@@ -1452,10 +1452,15 @@ class PushGame {
         // Find the theme name across all theme sets
         for (const setId of ['fun', 'month', 'color']) {
             if (THEMES[setId] && THEMES[setId][themeId]) {
-                return THEMES[setId][themeId].name;
+                const theme = THEMES[setId][themeId];
+                // Ensure we return a string, not an object
+                if (typeof theme.name === 'string') {
+                    return theme.name;
+                }
             }
         }
-        return themeId;
+        // Fallback: capitalize the themeId
+        return String(themeId).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
     getThemeSetForTheme(themeId) {
@@ -1484,7 +1489,7 @@ class PushGame {
 
         // Check for theme suggestion
         const suggestedTheme = this.getThemeSuggestion(adj, noun);
-        if (suggestedTheme) {
+        if (suggestedTheme && typeof suggestedTheme === 'string') {
             const themeName = this.getThemeDisplayName(suggestedTheme);
             this.pendingThemeSuggestion = suggestedTheme;
             document.getElementById('name-theme-message').innerHTML =
