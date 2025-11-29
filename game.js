@@ -2456,14 +2456,16 @@ class PushGame {
     }
 
     updateUI() {
-        document.getElementById('player-count').textContent = this.playerDeck.length;
+        // Card count includes current card (drawn but not yet played)
+        const playerCount = this.playerDeck.length + (this.currentCard ? 1 : 0);
+        document.getElementById('player-count').textContent = playerCount;
         document.getElementById('opponent-count').textContent = this.opponentDeck.length;
 
         // Update deck visibility
         const playerDeckEl = document.getElementById('player-deck');
         const opponentDeckEl = document.getElementById('opponent-deck');
 
-        playerDeckEl.style.opacity = this.playerDeck.length > 0 ? '1' : '0.3';
+        playerDeckEl.style.opacity = playerCount > 0 ? '1' : '0.3';
         opponentDeckEl.style.opacity = this.opponentDeck.length > 0 ? '1' : '0.3';
     }
 
