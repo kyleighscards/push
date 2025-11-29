@@ -14,10 +14,30 @@
     <div class="modal" id="username-modal">
         <div class="modal-content username-content">
             <h2>Welcome to Push!</h2>
-            <p>Enter a username to play with friends:</p>
-            <input type="text" id="username-input" class="username-input" placeholder="Your username" maxlength="15" autocomplete="off">
+            <p>Pick a fun name to play with friends!</p>
+            <div class="name-picker">
+                <select id="name-adjective" class="name-select">
+                    <option value="">Pick one...</option>
+                </select>
+                <select id="name-noun" class="name-select">
+                    <option value="">Pick one...</option>
+                </select>
+            </div>
+            <div class="name-preview" id="name-preview">Your name will appear here</div>
             <p class="username-error" id="username-error"></p>
             <button class="btn" id="username-submit">Let's Play!</button>
+        </div>
+    </div>
+
+    <!-- Name Theme Suggestion Modal -->
+    <div class="modal" id="name-theme-modal">
+        <div class="modal-content name-theme-content">
+            <h2>Great Choice!</h2>
+            <p id="name-theme-message">Your name matches a theme!</p>
+            <div class="name-theme-buttons">
+                <button class="btn suggestion-yes" id="accept-name-theme-btn">Yes, switch!</button>
+                <button class="btn suggestion-no" id="decline-name-theme-btn">No thanks</button>
+            </div>
         </div>
     </div>
 
@@ -38,7 +58,7 @@
                 <span class="logo-exclaim" style="--i: 4">!</span>
             </div>
             <p class="subtitle">By Kyleigh's Cards</p>
-            <p class="build-time">Build: Nov 29, 11:50 AM</p>
+            <p class="build-time">Build: Nov 29, 12:15 PM</p>
         </header>
 
         <div class="game-info">

@@ -1,5 +1,88 @@
 // Push! Card Game - JavaScript Implementation
 
+// Name picker lists for username selection
+const NAME_ADJECTIVES = [
+    // Fun general adjectives
+    'Silly', 'Wacky', 'Zany', 'Giggly', 'Bouncy', 'Sparkly', 'Dizzy', 'Fluffy',
+    'Sneaky', 'Speedy', 'Lazy', 'Crazy', 'Happy', 'Grumpy', 'Sleepy', 'Jumpy',
+    'Wiggly', 'Wobbly', 'Zippy', 'Fuzzy', 'Mighty', 'Tiny', 'Giant', 'Cosmic',
+    // Color adjectives
+    'Golden', 'Silver', 'Rainbow', 'Purple', 'Green', 'Blue', 'Pink', 'Orange',
+    // Theme-related adjectives (with theme hints)
+    'Galactic', 'Stellar', 'Lunar',      // space-adventure
+    'Magical', 'Enchanted', 'Mystical',  // unicorns
+    'Tropical', 'Sunny',                  // bananas
+    'Robotic', 'Electric', 'Cyber',      // robot, electronics
+    'Wild', 'Fierce', 'Hungry',          // shark, cat, dog
+    'Royal', 'Fancy', 'Dazzling',        // girl
+    'Turbo', 'Super', 'Mega',            // boy, video-game
+    'Spooky', 'Ghostly',                 // october
+    'Frosty', 'Snowy', 'Icy',            // january, december
+    'Blooming', 'Sunny'                   // flower, outdoor
+];
+
+const NAME_NOUNS = [
+    // Fun general nouns
+    'Potato', 'Pancake', 'Noodle', 'Pickle', 'Muffin', 'Nugget', 'Taco', 'Waffle',
+    'Penguin', 'Dolphin', 'Llama', 'Panda', 'Koala', 'Sloth', 'Otter', 'Hedgehog',
+    'Tornado', 'Volcano', 'Thunder', 'Comet', 'Blizzard',
+    'Ninja', 'Pirate', 'Wizard', 'Dragon', 'Knight',
+    'Banana', 'Coconut', 'Mango', 'Cherry', 'Lemon',
+    'Wrench', 'Hammer', 'Rocket', 'Balloon', 'Bubble',
+    // Theme-related nouns (with theme hints)
+    'Astronaut', 'Martian', 'Nebula', 'Comet', 'Vader',    // space-adventure
+    'Unicorn', 'Pegasus', 'Sparkle', 'Rainbow',             // unicorns
+    'Monkey', 'Gorilla',                                     // bananas
+    'Robot', 'Android', 'Circuit',                           // robot
+    'Shark', 'Jaws', 'Fin',                                  // shark
+    'Kitten', 'Whiskers', 'Paws',                            // cat
+    'Puppy', 'Woof', 'Bones',                                // dog
+    'Sword', 'Shield', 'Castle',                             // sword
+    'Blossom', 'Petal', 'Daisy', 'Rose',                    // flower
+    'Princess', 'Tiara', 'Glitter',                          // girl
+    'Champion', 'Racer', 'Blaster',                          // boy
+    'Gamer', 'Player', 'Quest',                              // video-game
+    'Explorer', 'Voyager', 'Camper',                         // trip, outdoor
+    'Beaker', 'Atom', 'Lab',                                 // science
+    'Pixel', 'Byte', 'Chip',                                 // electronics
+    'Guitar', 'Drums', 'Piano',                              // instruments
+    'Ghost', 'Pumpkin', 'Spider',                            // october
+    'Snowflake', 'Reindeer', 'Elf', 'Gingerbread'           // december
+];
+
+// Map themed names to theme suggestions
+const THEME_NAME_HINTS = {
+    // Adjectives that suggest themes
+    'Galactic': 'space-adventure', 'Stellar': 'space-adventure', 'Lunar': 'space-adventure',
+    'Magical': 'unicorns', 'Enchanted': 'unicorns', 'Mystical': 'unicorns',
+    'Tropical': 'bananas', 'Robotic': 'robot', 'Electric': 'electronics', 'Cyber': 'robot',
+    'Wild': 'shark', 'Fierce': 'shark', 'Hungry': 'shark',
+    'Royal': 'girl', 'Fancy': 'girl', 'Dazzling': 'girl',
+    'Spooky': 'october', 'Ghostly': 'october',
+    'Frosty': 'december', 'Snowy': 'january', 'Icy': 'january',
+    'Blooming': 'flower',
+    // Nouns that suggest themes
+    'Astronaut': 'space-adventure', 'Martian': 'space-adventure', 'Nebula': 'space-adventure',
+    'Comet': 'space-adventure', 'Vader': 'space-adventure',
+    'Unicorn': 'unicorns', 'Pegasus': 'unicorns', 'Sparkle': 'unicorns', 'Rainbow': 'unicorns',
+    'Monkey': 'bananas', 'Gorilla': 'bananas', 'Banana': 'bananas', 'Coconut': 'bananas',
+    'Robot': 'robot', 'Android': 'robot', 'Circuit': 'robot',
+    'Shark': 'shark', 'Jaws': 'shark', 'Fin': 'shark',
+    'Kitten': 'cat', 'Whiskers': 'cat', 'Paws': 'cat',
+    'Puppy': 'dog', 'Woof': 'dog', 'Bones': 'dog',
+    'Sword': 'sword', 'Shield': 'sword', 'Castle': 'sword',
+    'Blossom': 'flower', 'Petal': 'flower', 'Daisy': 'flower', 'Rose': 'flower',
+    'Princess': 'girl', 'Tiara': 'girl', 'Glitter': 'girl',
+    'Champion': 'boy', 'Racer': 'boy', 'Blaster': 'boy',
+    'Gamer': 'video-game', 'Player': 'video-game', 'Quest': 'video-game',
+    'Explorer': 'trip', 'Voyager': 'trip', 'Camper': 'outdoor',
+    'Beaker': 'science', 'Atom': 'science', 'Lab': 'science',
+    'Pixel': 'electronics', 'Byte': 'electronics', 'Chip': 'electronics',
+    'Guitar': 'instruments', 'Drums': 'instruments', 'Piano': 'instruments',
+    'Ghost': 'october', 'Pumpkin': 'october', 'Spider': 'october',
+    'Snowflake': 'december', 'Reindeer': 'december', 'Elf': 'december', 'Gingerbread': 'december'
+};
+
 // Theme definitions
 const THEMES = {
     color: {
@@ -1245,10 +1328,33 @@ class PushGame {
     }
 
     initializeMultiplayerUI() {
-        // Username modal
+        // Populate name picker dropdowns
+        this.populateNamePicker();
+
+        // Username modal - name picker change handlers
+        const adjSelect = document.getElementById('name-adjective');
+        const nounSelect = document.getElementById('name-noun');
+
+        adjSelect.addEventListener('change', () => this.updateNamePreview());
+        nounSelect.addEventListener('change', () => this.updateNamePreview());
+
         document.getElementById('username-submit').addEventListener('click', () => this.submitUsername());
-        document.getElementById('username-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.submitUsername();
+
+        // Theme suggestion modal buttons
+        document.getElementById('accept-name-theme-btn').addEventListener('click', () => {
+            if (this.pendingThemeSuggestion) {
+                const setId = this.getThemeSetForTheme(this.pendingThemeSuggestion);
+                this.applyTheme(setId, this.pendingThemeSuggestion);
+                this.pendingThemeSuggestion = null;
+            }
+            document.getElementById('name-theme-modal').classList.remove('show');
+            this.completeUsernameSubmission();
+        });
+
+        document.getElementById('decline-name-theme-btn').addEventListener('click', () => {
+            this.pendingThemeSuggestion = null;
+            document.getElementById('name-theme-modal').classList.remove('show');
+            this.completeUsernameSubmission();
         });
 
         // Mode selection
@@ -1290,32 +1396,112 @@ class PushGame {
         });
     }
 
+    populateNamePicker() {
+        const adjSelect = document.getElementById('name-adjective');
+        const nounSelect = document.getElementById('name-noun');
+
+        // Sort alphabetically for easier finding
+        const sortedAdj = [...NAME_ADJECTIVES].sort();
+        const sortedNouns = [...NAME_NOUNS].sort();
+
+        sortedAdj.forEach(adj => {
+            const option = document.createElement('option');
+            option.value = adj;
+            option.textContent = adj;
+            adjSelect.appendChild(option);
+        });
+
+        sortedNouns.forEach(noun => {
+            const option = document.createElement('option');
+            option.value = noun;
+            option.textContent = noun;
+            nounSelect.appendChild(option);
+        });
+    }
+
+    updateNamePreview() {
+        const adj = document.getElementById('name-adjective').value;
+        const noun = document.getElementById('name-noun').value;
+        const preview = document.getElementById('name-preview');
+
+        if (adj && noun) {
+            preview.textContent = `${adj} ${noun}`;
+            preview.classList.add('has-name');
+        } else if (adj) {
+            preview.textContent = `${adj} ...`;
+            preview.classList.remove('has-name');
+        } else if (noun) {
+            preview.textContent = `... ${noun}`;
+            preview.classList.remove('has-name');
+        } else {
+            preview.textContent = 'Your name will appear here';
+            preview.classList.remove('has-name');
+        }
+    }
+
+    getThemeSuggestion(adj, noun) {
+        // Check if either word suggests a theme
+        const adjTheme = THEME_NAME_HINTS[adj];
+        const nounTheme = THEME_NAME_HINTS[noun];
+
+        // Prefer noun theme, fall back to adjective theme
+        return nounTheme || adjTheme || null;
+    }
+
+    getThemeDisplayName(themeId) {
+        // Find the theme name across all theme sets
+        for (const setId of ['fun', 'month', 'color']) {
+            if (THEMES[setId] && THEMES[setId][themeId]) {
+                return THEMES[setId][themeId].name;
+            }
+        }
+        return themeId;
+    }
+
+    getThemeSetForTheme(themeId) {
+        // Find which set contains this theme
+        for (const setId of ['fun', 'month', 'color']) {
+            if (THEMES[setId] && THEMES[setId][themeId]) {
+                return setId;
+            }
+        }
+        return 'fun'; // default
+    }
+
     async submitUsername() {
-        const input = document.getElementById('username-input');
+        const adj = document.getElementById('name-adjective').value;
+        const noun = document.getElementById('name-noun').value;
         const error = document.getElementById('username-error');
-        const username = input.value.trim();
 
-        // Validate
-        if (username.length < 3) {
-            error.textContent = 'Username must be at least 3 characters';
-            return;
-        }
-
-        if (username.length > 15) {
-            error.textContent = 'Username must be 15 characters or less';
-            return;
-        }
-
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            error.textContent = 'Only letters, numbers, and underscore allowed';
+        // Validate - both must be selected
+        if (!adj || !noun) {
+            error.textContent = 'Please pick both an adjective and a noun!';
             return;
         }
 
         error.textContent = '';
+        this.pendingUsername = `${adj} ${noun}`;
+
+        // Check for theme suggestion
+        const suggestedTheme = this.getThemeSuggestion(adj, noun);
+        if (suggestedTheme) {
+            const themeName = this.getThemeDisplayName(suggestedTheme);
+            this.pendingThemeSuggestion = suggestedTheme;
+            document.getElementById('name-theme-message').innerHTML =
+                `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
+            document.getElementById('name-theme-modal').classList.add('show');
+        } else {
+            await this.completeUsernameSubmission();
+        }
+    }
+
+    async completeUsernameSubmission() {
+        const error = document.getElementById('username-error');
 
         try {
-            await this.multiplayer.setUsername(username);
+            await this.multiplayer.setUsername(this.pendingUsername);
             document.getElementById('username-modal').classList.remove('show');
+            this.pendingUsername = null;
         } catch (e) {
             error.textContent = 'Error saving username. Try again.';
         }
@@ -2605,7 +2791,8 @@ class PushGame {
                 this.currentTurnPlayer = 'opponent';
                 this.isMyTurn = false;
                 this.isPlayerTurn = false;
-                this.setStatus(`${this.multiplayer.opponentUsername}'s turn...`);
+                const oppName = this.multiplayer.opponentUsername || 'Opponent';
+                this.setStatus(`${oppName}'s turn...`);
                 // Don't call opponentTurn() - wait for Firebase update
             } else {
                 // Opponent just finished, my turn
