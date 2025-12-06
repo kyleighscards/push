@@ -62,6 +62,7 @@ body {
     max-width: 900px;
     margin: 0 auto;
     padding: 20px;
+    position: relative;
 }
 
 /* Header */
@@ -184,7 +185,10 @@ header h1 {
     padding: 10px 20px;
     background: var(--status-bg);
     border-radius: 20px;
+    min-width: 200px;
     max-width: 300px;
+    min-height: 1.5em;
+    box-sizing: border-box;
 }
 
 /* Game Board */
@@ -384,7 +388,9 @@ header h1 {
     justify-content: center;
     align-items: center;
     width: 60px;
+    height: 70px;
     font-size: 1.2rem;
+    overflow: hidden;
 }
 
 /* Suit colors */
@@ -399,13 +405,20 @@ header h1 {
 /* Face card styles */
 .card.face-card .card-center {
     font-size: 2.5rem;
+    flex-direction: column;
+}
+
+.card.face-card .card-center .face-symbol {
+    z-index: 2;
+    position: relative;
 }
 
 .card.face-card .card-center::after {
     content: attr(data-suit);
     position: absolute;
     font-size: 1rem;
-    bottom: -5px;
+    bottom: 5px;
+    z-index: 1;
 }
 
 /* Buttons */
@@ -484,9 +497,49 @@ header h1 {
 
 .controls {
     display: flex;
-    justify-content: center;
-    gap: 20px;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 20px;
+    padding: 0 10px;
+}
+
+.controls-left {
+    display: flex;
+    gap: 10px;
+}
+
+.controls-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Icon buttons */
+.icon-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Help button in upper right */
+.help-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 50%;
+    background: var(--btn-rules);
+    color: white;
+    z-index: 100;
 }
 
 /* Modal Styles */
@@ -1049,8 +1102,24 @@ header h1 {
     }
 
     .controls {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .icon-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+    }
+
+    .new-game-btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+
+    .status-message {
+        min-width: 150px;
+        font-size: 0.9rem;
     }
 
     .card-rank {

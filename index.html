@@ -49,6 +49,9 @@
     </div>
 
     <div class="game-container">
+        <!-- Help button in upper right -->
+        <button class="btn help-btn" id="rules-btn" title="How to Play">?</button>
+
         <header>
             <div class="logo-container">
                 <span class="logo-letter" style="--i: 0">P</span>
@@ -58,7 +61,7 @@
                 <span class="logo-exclaim" style="--i: 4">!</span>
             </div>
             <p class="subtitle">By Kyleigh's Cards</p>
-            <p class="build-time">Build: Nov 29, 2:00 PM</p>
+            <p class="build-time">Build: Dec 6, 10:00 AM</p>
         </header>
 
         <div class="game-info">
@@ -116,11 +119,14 @@
         </div>
 
         <div class="controls">
-            <button class="btn new-game-btn" id="new-game-btn">New Game</button>
-            <button class="btn rules-btn" id="rules-btn">How to Play</button>
-            <button class="btn settings-btn" id="settings-btn">Settings</button>
-            <button class="btn theme-btn" id="theme-btn">Theme</button>
-            <button class="btn name-btn" id="change-name-btn">Name</button>
+            <div class="controls-left">
+                <button class="btn new-game-btn" id="new-game-btn">New Game</button>
+            </div>
+            <div class="controls-right">
+                <button class="btn icon-btn name-btn" id="change-name-btn" title="Change Name">👤</button>
+                <button class="btn icon-btn theme-btn" id="theme-btn" title="Theme">🎨</button>
+                <button class="btn icon-btn settings-btn" id="settings-btn" title="Settings">⚙️</button>
+            </div>
         </div>
 
         <!-- Rules Modal -->
