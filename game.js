@@ -2748,7 +2748,17 @@ class PushGame {
     showPushPopup(message = 'PUSH!') {
         const popup = document.createElement('div');
         popup.className = 'push-popup';
-        popup.textContent = message;
+
+        // Create logo-style letters
+        const letters = message.split('');
+        letters.forEach((letter, i) => {
+            const span = document.createElement('span');
+            span.className = letter === '!' ? 'push-exclaim' : 'push-letter';
+            span.style.setProperty('--i', i);
+            span.textContent = letter;
+            popup.appendChild(span);
+        });
+
         document.body.appendChild(popup);
 
         setTimeout(() => {
