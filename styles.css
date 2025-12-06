@@ -788,6 +788,13 @@ header h1 {
     font-style: italic;
 }
 
+.build-info {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
 /* Theme Modal */
 .theme-content {
     min-width: 400px;
