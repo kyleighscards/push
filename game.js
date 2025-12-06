@@ -2425,20 +2425,20 @@ class PushGame {
                 this.piles[i].length < this.piles[best].length ? i : best, 0);
         }
 
-        // Number card: try to complete a push against player
+        // Number card: try to complete a push (forces player to take pile)
         for (const i of validPiles) {
             const state = this.pileStates[i];
-            if (state && state.playedBy === 'player') {
+            if (state && state.targetCount > 0) {
                 if (state.count + 1 >= state.targetCount) {
                     return i; // This will complete the push!
                 }
             }
         }
 
-        // Try to play on a pile where opponent doesn't have active special
+        // Try to play on empty pile or pile without countdown
         for (const i of validPiles) {
             const state = this.pileStates[i];
-            if (!state || state.playedBy === 'opponent') {
+            if (!state || state.targetCount === 0) {
                 return i;
             }
         }
@@ -2448,7 +2448,7 @@ class PushGame {
         let bestProgress = -1;
         for (const i of validPiles) {
             const state = this.pileStates[i];
-            if (state && state.playedBy === 'player') {
+            if (state && state.targetCount > 0) {
                 const progress = state.count / state.targetCount;
                 if (progress > bestProgress) {
                     bestProgress = progress;
@@ -2479,12 +2479,13 @@ class PushGame {
         }
 
         // Rule 2: Push opportunity (number card, can complete push, pick highest score)
+        // When AI completes a push, the PLAYER takes the pile - always good for AI!
         if (!this.isSpecialCard(card)) {
             let bestPile = -1;
             let bestScore = -1;
             for (const i of validPiles) {
                 const state = this.pileStates[i];
-                if (state && state.playedBy === 'player') {
+                if (state && state.targetCount > 0) {
                     const remaining = state.targetCount - state.count;
                     if (remaining === 1) {
                         const score = this.calculatePileScore(i);
