@@ -1986,25 +1986,23 @@ class PushGame {
             </div>
         `).join('');
 
-        // Add click handlers
+        // Add click handlers - apply theme immediately
         grid.querySelectorAll('.theme-card').forEach(card => {
             card.addEventListener('click', () => {
                 const setId = card.dataset.set;
                 const themeId = card.dataset.theme;
-                // Store pending selection instead of applying immediately
-                this.pendingThemeSelection = { set: setId, id: themeId };
+                // Apply theme immediately
+                this.applyTheme(setId, themeId);
                 // Update visual selection state
                 grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
+                // Close modal
+                document.getElementById('theme-modal').classList.remove('show');
             });
         });
     }
 
-    confirmThemeSelection() {
-        if (this.pendingThemeSelection) {
-            this.applyTheme(this.pendingThemeSelection.set, this.pendingThemeSelection.id);
-            this.pendingThemeSelection = null;
-        }
+    cancelThemeSelection() {
         document.getElementById('theme-modal').classList.remove('show');
     }
 
@@ -2053,8 +2051,7 @@ class PushGame {
 
         // Theme modal listeners
         document.getElementById('theme-btn').addEventListener('click', () => this.showThemeModal());
-        document.getElementById('close-theme').addEventListener('click', () => this.hideThemeModal());
-        document.getElementById('theme-select-btn').addEventListener('click', () => this.confirmThemeSelection());
+        document.getElementById('theme-cancel-btn').addEventListener('click', () => this.cancelThemeSelection());
         document.getElementById('theme-modal').addEventListener('click', (e) => {
             if (e.target.id === 'theme-modal') this.hideThemeModal();
         });
@@ -2265,7 +2262,7 @@ class PushGame {
                 playedBy: playedBy
             };
             if (!isPlayer) {
-                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} - ${this.pushCounts[card.rank]} number cards to push!`);
+                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
             }
         } else if (pileState) {
             // Number card played on a pile with an active special card
@@ -2286,11 +2283,10 @@ class PushGame {
                 }, 1500);
                 return;
             } else if (!isPlayer) {
-                const remaining = pileState.targetCount - pileState.count;
-                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} - ${remaining} more to push!`);
+                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
             }
         } else if (!isPlayer) {
-            this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]} on Pile ${pileIndex + 1}`);
+            this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
         }
 
         this.renderPiles();
@@ -2677,20 +2673,50 @@ class PushGame {
 
     showWinModal(playerWon) {
         const modal = document.getElementById('win-modal');
+        const content = document.getElementById('win-content');
         const message = document.getElementById('win-message');
-        const animation = document.getElementById('win-animation');
+        const trophy = document.getElementById('win-trophy');
+        const subtitle = document.getElementById('win-subtitle');
+        const confettiContainer = document.getElementById('win-confetti');
+
+        // Clear previous confetti
+        confettiContainer.innerHTML = '';
+
+        // Remove previous classes
+        content.classList.remove('victory', 'defeat');
 
         if (playerWon) {
-            message.textContent = "🎉 You Win! 🎉";
-            message.style.color = '#f1c40f';
-            animation.textContent = "🏆";
+            content.classList.add('victory');
+            message.textContent = "You Win!";
+            trophy.textContent = "🏆";
+            subtitle.textContent = "Congratulations, Champion!";
+            // Create confetti
+            this.createConfetti(confettiContainer);
         } else {
-            message.textContent = "Opponent Wins!";
-            message.style.color = '#e74c3c';
-            animation.textContent = "🤖";
+            content.classList.add('defeat');
+            message.textContent = "You Lose!";
+            trophy.textContent = "😢";
+            subtitle.textContent = "Better luck next time!";
         }
 
         modal.classList.add('show');
+    }
+
+    createConfetti(container) {
+        const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#e67e22'];
+        const shapes = ['▲', '●', '■', '★', '♦'];
+
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            confetti.textContent = shapes[Math.floor(Math.random() * shapes.length)];
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.fontSize = (Math.random() * 10 + 8) + 'px';
+            confetti.style.animationDelay = (Math.random() * 2) + 's';
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            container.appendChild(confetti);
+        }
     }
 
     showRules() {

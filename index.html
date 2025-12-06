@@ -162,9 +162,11 @@
 
         <!-- Win Modal -->
         <div class="modal" id="win-modal">
-            <div class="modal-content win-content">
+            <div class="modal-content win-content" id="win-content">
+                <div class="win-confetti" id="win-confetti"></div>
+                <div class="win-trophy" id="win-trophy">🏆</div>
                 <h2 id="win-message">You Win!</h2>
-                <div class="win-animation" id="win-animation"></div>
+                <p class="win-subtitle" id="win-subtitle">Congratulations, Champion!</p>
                 <button class="btn play-again-btn" id="play-again-btn">Play Again</button>
             </div>
         </div>
@@ -223,7 +225,6 @@
         <!-- Theme Modal -->
         <div class="modal" id="theme-modal">
             <div class="modal-content theme-content">
-                <span class="close-btn" id="close-theme">&times;</span>
                 <h2>Choose Theme</h2>
                 <div class="theme-sets" id="theme-sets">
                     <!-- Theme set tabs rendered by JS -->
@@ -231,7 +232,7 @@
                 <div class="theme-grid" id="theme-grid">
                     <!-- Theme cards rendered by JS -->
                 </div>
-                <button class="btn theme-select-btn" id="theme-select-btn">Select</button>
+                <button class="btn theme-cancel-btn" id="theme-cancel-btn">Cancel</button>
             </div>
         </div>
 
