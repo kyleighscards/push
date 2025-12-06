@@ -1141,9 +1141,6 @@ class MultiplayerManager {
                 }
             });
         }
-
-        // Show message bar
-        document.getElementById('message-bar').style.display = 'block';
     }
 
     getPlayerRole() {
@@ -1190,16 +1187,6 @@ class MultiplayerManager {
         await gameRef.update(updates);
     }
 
-    async sendMessage(text) {
-        if (!this.currentGameId) return;
-
-        await database.ref(`games/${this.currentGameId}/messages`).push({
-            from: this.userId,
-            text: text,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
-    }
-
     showToast(sender, message) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -1240,9 +1227,6 @@ class MultiplayerManager {
         if (this.opponentId) {
             database.ref(`users/${this.opponentId}/online`).off();
         }
-
-        // Hide message bar
-        document.getElementById('message-bar').style.display = 'none';
 
         this.currentGameId = null;
         this.isMultiplayer = false;
@@ -1395,14 +1379,6 @@ class PushGame {
         // Cancel invite
         document.getElementById('cancel-invite-btn').addEventListener('click', () => {
             this.multiplayer.cancelInvite();
-        });
-
-        // Message sending
-        document.getElementById('message-select').addEventListener('change', (e) => {
-            if (e.target.value) {
-                this.multiplayer.sendMessage(e.target.value);
-                e.target.value = '';
-            }
         });
     }
 

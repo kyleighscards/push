@@ -1561,33 +1561,6 @@ header h1 {
     to { transform: rotate(360deg); }
 }
 
-/* Message Bar */
-.message-bar {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-}
-
-.message-select {
-    padding: 10px 20px;
-    font-size: 1rem;
-    border: 2px solid var(--gold);
-    border-radius: 25px;
-    background: rgba(0,0,0,0.8);
-    color: white;
-    cursor: pointer;
-    outline: none;
-    min-width: 200px;
-}
-
-.message-select option {
-    background: #2c3e50;
-    color: white;
-    padding: 10px;
-}
-
 /* Toast Notifications */
 .toast-container {
     position: fixed;
