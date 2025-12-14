@@ -1073,6 +1073,13 @@ class MultiplayerManager {
         this.opponentId = gameData.player1;
         this.opponentUsername = gameData.player1Username;
 
+        // Apply host's settings (pileCount and jackOnJack) to invitee
+        if (gameData.settings) {
+            this.game.settings.pileCount = gameData.settings.pileCount;
+            this.game.settings.jackOnJack = gameData.settings.jackOnJack;
+            this.game.updateSettingsUI();
+        }
+
         // Initialize local game state FIRST (before listeners can fire)
         this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
 
@@ -2012,6 +2019,10 @@ class PushGame {
         document.getElementById('rules-btn').addEventListener('click', () => this.showRules());
         document.getElementById('close-rules').addEventListener('click', () => this.hideRules());
 
+        // Share QR modal listeners
+        document.getElementById('share-btn').addEventListener('click', () => this.showQRModal());
+        document.getElementById('close-qr').addEventListener('click', () => this.hideQRModal());
+
         // Settings modal listeners
         document.getElementById('settings-btn').addEventListener('click', () => this.showSettings());
         document.getElementById('close-settings').addEventListener('click', () => this.hideSettings());
@@ -2044,6 +2055,10 @@ class PushGame {
 
         document.getElementById('settings-modal').addEventListener('click', (e) => {
             if (e.target.id === 'settings-modal') this.hideSettings();
+        });
+
+        document.getElementById('qr-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'qr-modal') this.hideQRModal();
         });
 
         // Change name button
@@ -2726,6 +2741,14 @@ class PushGame {
 
     hideRules() {
         document.getElementById('rules-modal').classList.remove('show');
+    }
+
+    showQRModal() {
+        document.getElementById('qr-modal').classList.add('show');
+    }
+
+    hideQRModal() {
+        document.getElementById('qr-modal').classList.remove('show');
     }
 
     highlightPiles(highlight) {

@@ -51,6 +51,19 @@
     <div class="game-container">
         <!-- Help button in upper right -->
         <button class="btn help-btn" id="rules-btn" title="How to Play">?</button>
+        <!-- Share button below help -->
+        <button class="btn share-btn" id="share-btn" title="Share">
+            <svg viewBox="0 0 7 7" width="16" height="16">
+                <rect x="0" y="0" width="7" height="7" fill="white"/>
+                <rect x="0" y="0" width="1" height="1" fill="#FF69B4"/><rect x="2" y="0" width="1" height="1" fill="#FF69B4"/><rect x="4" y="0" width="1" height="1" fill="#FF69B4"/><rect x="6" y="0" width="1" height="1" fill="#FF69B4"/>
+                <rect x="1" y="1" width="1" height="1" fill="#FF69B4"/><rect x="3" y="1" width="1" height="1" fill="#FF69B4"/><rect x="5" y="1" width="1" height="1" fill="#FF69B4"/>
+                <rect x="0" y="2" width="1" height="1" fill="#FF69B4"/><rect x="2" y="2" width="1" height="1" fill="#FF69B4"/><rect x="5" y="2" width="1" height="1" fill="#FF69B4"/><rect x="6" y="2" width="1" height="1" fill="#FF69B4"/>
+                <rect x="1" y="3" width="1" height="1" fill="#FF69B4"/><rect x="4" y="3" width="1" height="1" fill="#FF69B4"/><rect x="6" y="3" width="1" height="1" fill="#FF69B4"/>
+                <rect x="0" y="4" width="1" height="1" fill="#FF69B4"/><rect x="3" y="4" width="1" height="1" fill="#FF69B4"/><rect x="5" y="4" width="1" height="1" fill="#FF69B4"/>
+                <rect x="1" y="5" width="1" height="1" fill="#FF69B4"/><rect x="2" y="5" width="1" height="1" fill="#FF69B4"/><rect x="4" y="5" width="1" height="1" fill="#FF69B4"/><rect x="6" y="5" width="1" height="1" fill="#FF69B4"/>
+                <rect x="0" y="6" width="1" height="1" fill="#FF69B4"/><rect x="3" y="6" width="1" height="1" fill="#FF69B4"/><rect x="5" y="6" width="1" height="1" fill="#FF69B4"/>
+            </svg>
+        </button>
 
         <header>
             <div class="logo-container">
@@ -267,7 +280,7 @@
                     <button class="btn mode-btn friend-btn" id="play-friend-btn">
                         <div class="mode-btn-glow"></div>
                         <span class="mode-icon">👥</span>
-                        <span class="mode-title">Friend</span>
+                        <span class="mode-title">Players</span>
                         <span class="mode-desc">Play online together!</span>
                     </button>
                 </div>
@@ -312,6 +325,17 @@
 
         <!-- Toast Container -->
         <div class="toast-container" id="toast-container"></div>
+
+        <!-- QR Code Modal -->
+        <div class="modal" id="qr-modal">
+            <div class="modal-content qr-content">
+                <span class="close-btn" id="close-qr">&times;</span>
+                <h2>Share Push!</h2>
+                <p>Scan to play with friends!</p>
+                <img src="PUSH_QR_CODE.png" alt="Push! QR Code" class="qr-code-image">
+                <p class="qr-url">kyleighscards.github.io/push</p>
+            </div>
+        </div>
     </div>
 
     <script src="game.js"></script>

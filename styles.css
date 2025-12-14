@@ -553,6 +553,30 @@ header h1 {
     z-index: 100;
 }
 
+/* Share button below help */
+.share-btn {
+    position: absolute;
+    top: 54px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 1.1rem;
+    border-radius: 50%;
+    background: white;
+    color: white;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #FF69B4;
+}
+
+.share-btn:hover {
+    background: #fff5f9;
+    transform: scale(1.1);
+}
+
 /* Modal Styles */
 .modal {
     display: none;
@@ -642,6 +666,42 @@ header h1 {
 
 .rules-text li {
     margin-bottom: 5px;
+}
+
+/* QR Code Modal */
+.qr-content {
+    text-align: center;
+    padding: 30px 40px;
+}
+
+.qr-content h2 {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.qr-content p {
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 20px;
+}
+
+.qr-code-image {
+    width: 280px;
+    height: 280px;
+    border-radius: 15px;
+    background: white;
+    padding: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.qr-url {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--gold) !important;
+    margin-top: 15px !important;
+    padding: 8px 15px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 20px;
+    display: inline-block;
 }
 
 /* Win Modal */
