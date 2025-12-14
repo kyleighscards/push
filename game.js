@@ -364,6 +364,38 @@ class SoundManager {
             osc.stop(startTime + 0.08);
         });
     }
+
+    // Play invitation received sound (obvious doorbell-like chime)
+    playInvite() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Doorbell-style ding-dong, repeated twice for attention
+        const notes = [
+            { freq: 659.25, time: 0 },      // E5 (ding)
+            { freq: 523.25, time: 0.2 },    // C5 (dong)
+            { freq: 659.25, time: 0.5 },    // E5 (ding)
+            { freq: 523.25, time: 0.7 }     // C5 (dong)
+        ];
+
+        notes.forEach(({ freq, time }) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+
+            const startTime = this.audioContext.currentTime + time;
+            gain.gain.setValueAtTime(0.2, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.18);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.2);
+        });
+    }
 }
 
 // Global sound manager instance
@@ -1206,6 +1238,9 @@ class MultiplayerManager {
         // Get inviter's username
         const inviterSnap = await database.ref(`users/${invite.from}/username`).once('value');
         const inviterName = inviterSnap.val() || 'Someone';
+
+        // Play obvious invitation sound
+        soundManager.playInvite();
 
         document.getElementById('invite-message').textContent = `${inviterName} wants to play!`;
         document.getElementById('invite-modal').classList.add('show');
