@@ -1821,7 +1821,7 @@ class PushGame {
             jackOnJack: true,
             skillLevel: 'expert',  // 'kid', 'fun', 'expert'
             hintsAndTips: true,    // Show fun hints during special moments
-            muteSounds: false      // Mute all game sounds
+            soundEffects: true     // Play sound effects
         };
 
         // Status messages (for easy customization)
@@ -2381,7 +2381,7 @@ class PushGame {
         const jackOnJackToggle = document.getElementById('jack-on-jack');
         const skillLevelSelect = document.getElementById('skill-level');
         const hintsToggle = document.getElementById('hints-and-tips');
-        const muteToggle = document.getElementById('mute-sounds');
+        const soundToggle = document.getElementById('sound-effects');
 
         if (pileCountSelect) {
             pileCountSelect.value = this.settings.pileCount.toString();
@@ -2395,11 +2395,11 @@ class PushGame {
         if (hintsToggle) {
             hintsToggle.checked = this.settings.hintsAndTips;
         }
-        if (muteToggle) {
-            muteToggle.checked = this.settings.muteSounds;
+        if (soundToggle) {
+            soundToggle.checked = this.settings.soundEffects;
         }
-        // Apply mute setting to sound manager
-        soundManager.enabled = !this.settings.muteSounds;
+        // Apply sound setting to sound manager
+        soundManager.enabled = this.settings.soundEffects;
     }
 
     // Theme methods
@@ -2692,9 +2692,9 @@ class PushGame {
             this.saveSettings();
         });
 
-        document.getElementById('mute-sounds').addEventListener('change', (e) => {
-            this.settings.muteSounds = e.target.checked;
-            soundManager.enabled = !this.settings.muteSounds;
+        document.getElementById('sound-effects').addEventListener('change', (e) => {
+            this.settings.soundEffects = e.target.checked;
+            soundManager.enabled = this.settings.soundEffects;
             this.saveSettings();
         });
 
