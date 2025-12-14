@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push! Admin</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #e8a838;
+            font-size: 2.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #e8a838;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #e8a838;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .user-table th,
+        .user-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-table th {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8a838;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .user-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-dot.online {
+            background: #2ecc71;
+            box-shadow: 0 0 10px #2ecc71;
+        }
+
+        .status-dot.offline {
+            background: #7f8c8d;
+        }
+
+        .status-dot.in-game {
+            background: #e74c3c;
+            box-shadow: 0 0 10px #e74c3c;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #e8a838, #f39c12);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #e8a838;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .timestamp {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .user-table {
+                font-size: 0.85rem;
+            }
+
+            .user-table th,
+            .user-table td {
+                padding: 8px 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; Back to Game</a>
+        <h1>Push! Admin Dashboard</h1>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <div class="number" id="total-users">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Online Now</h3>
+                <div class="number" id="online-users">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>In Game</h3>
+                <div class="number" id="in-game-users">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Games</h3>
+                <div class="number" id="active-games">-</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>All Users</h2>
+            <button class="refresh-btn" onclick="loadData()">Refresh Data</button>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Username</th>
+                        <th>User ID</th>
+                        <th>In Game</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Active Games</h2>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Game ID</th>
+                        <th>Player 1</th>
+                        <th>Player 2</th>
+                        <th>Status</th>
+                        <th>Current Turn</th>
+                    </tr>
+                </thead>
+                <tbody id="games-table-body">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA973Q0OwUjbAA0mtBdz626NgmVSTo7Gh4",
+            authDomain: "push-card-game.firebaseapp.com",
+            databaseURL: "https://push-card-game-default-rtdb.firebaseio.com",
+            projectId: "push-card-game",
+            storageBucket: "push-card-game.firebasestorage.app",
+            messagingSenderId: "348636248250",
+            appId: "1:348636248250:web:bc74884a027f2898e8ea83"
+        };
+
+        // Initialize Firebase
+        let database;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (e) {
+            console.log('Firebase initialization failed:', e);
+        }
+
+        async function loadData() {
+            if (!database) {
+                document.getElementById('users-table-body').innerHTML =
+                    '<tr><td colspan="5" class="loading">Firebase not available</td></tr>';
+                return;
+            }
+
+            try {
+                // Load users
+                const usersSnapshot = await database.ref('users').once('value');
+                const users = usersSnapshot.val() || {};
+
+                // Load games
+                const gamesSnapshot = await database.ref('games').once('value');
+                const games = gamesSnapshot.val() || {};
+
+                // Calculate stats
+                const userList = Object.entries(users);
+                const totalUsers = userList.length;
+                const onlineUsers = userList.filter(([id, u]) => u.online).length;
+                const inGameUsers = userList.filter(([id, u]) => u.inGame).length;
+
+                const gameList = Object.entries(games);
+                const activeGames = gameList.filter(([id, g]) => g.status === 'active').length;
+
+                // Update stats
+                document.getElementById('total-users').textContent = totalUsers;
+                document.getElementById('online-users').textContent = onlineUsers;
+                document.getElementById('in-game-users').textContent = inGameUsers;
+                document.getElementById('active-games').textContent = activeGames;
+
+                // Render users table
+                if (userList.length === 0) {
+                    document.getElementById('users-table-body').innerHTML =
+                        '<tr><td colspan="5" class="loading">No users found</td></tr>';
+                } else {
+                    // Sort: online first, then by username
+                    userList.sort((a, b) => {
+                        if (a[1].online && !b[1].online) return -1;
+                        if (!a[1].online && b[1].online) return 1;
+                        return (a[1].username || '').localeCompare(b[1].username || '');
+                    });
+
+                    const usersHtml = userList.map(([id, user]) => {
+                        const statusClass = user.inGame ? 'in-game' : (user.online ? 'online' : 'offline');
+                        const statusText = user.inGame ? 'In Game' : (user.online ? 'Online' : 'Offline');
+                        const lastSeen = user.lastSeen ? new Date(user.lastSeen).toLocaleString() : '-';
+
+                        return `
+                            <tr>
+                                <td><span class="status-dot ${statusClass}"></span>${statusText}</td>
+                                <td>${user.username || 'Unknown'}</td>
+                                <td class="timestamp">${id.substring(0, 12)}...</td>
+                                <td>${user.inGame ? user.inGame.substring(0, 8) + '...' : '-'}</td>
+                                <td class="timestamp">${lastSeen}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    document.getElementById('users-table-body').innerHTML = usersHtml;
+                }
+
+                // Render games table
+                const activeGameList = gameList.filter(([id, g]) => g.status === 'active' || g.status === 'waiting');
+
+                if (activeGameList.length === 0) {
+                    document.getElementById('games-table-body').innerHTML =
+                        '<tr><td colspan="5" class="loading">No active games</td></tr>';
+                } else {
+                    const gamesHtml = activeGameList.map(([id, game]) => {
+                        return `
+                            <tr>
+                                <td class="timestamp">${id.substring(0, 12)}...</td>
+                                <td>${game.player1Username || 'Unknown'}</td>
+                                <td>${game.player2Username || 'Waiting...'}</td>
+                                <td>${game.status}</td>
+                                <td>${game.currentTurn || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    document.getElementById('games-table-body').innerHTML = gamesHtml;
+                }
+
+            } catch (e) {
+                console.error('Error loading data:', e);
+                document.getElementById('users-table-body').innerHTML =
+                    `<tr><td colspan="5" class="loading">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

@@ -3650,7 +3650,6 @@ class PushGame {
         if (!this.currentCard) {
             container.innerHTML = `
                 <div class="card placeholder">
-                    <span>Draw a card!</span>
                 </div>
             `;
             return;
