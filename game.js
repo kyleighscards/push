@@ -1308,6 +1308,18 @@ class MultiplayerManager {
         soundManager.playInvite();
 
         document.getElementById('invite-message').textContent = `${inviterName} wants to play!`;
+
+        // Display game settings if available
+        const settingsEl = document.getElementById('invite-settings');
+        if (settingsEl && invite.settings) {
+            const pileText = `${invite.settings.pileCount} piles`;
+            const jackText = invite.settings.jackOnJack ? 'Jack-on-Jack ON' : 'Jack-on-Jack OFF';
+            settingsEl.textContent = `${pileText} • ${jackText}`;
+            settingsEl.style.display = 'block';
+        } else if (settingsEl) {
+            settingsEl.style.display = 'none';
+        }
+
         document.getElementById('invite-modal').classList.add('show');
 
         this.pendingInviteId = inviteId;
@@ -1397,13 +1409,17 @@ class MultiplayerManager {
         const targetSnap = await database.ref(`users/${targetUserId}/username`).once('value');
         const targetName = targetSnap.val();
 
-        // Create invite
+        // Create invite with game settings
         const inviteRef = database.ref('invites').push();
         await inviteRef.set({
             from: this.userId,
             to: targetUserId,
             timestamp: firebase.database.ServerValue.TIMESTAMP,
-            status: 'pending'
+            status: 'pending',
+            settings: {
+                pileCount: this.game.settings.pileCount,
+                jackOnJack: this.game.settings.jackOnJack
+            }
         });
 
         // Show waiting modal

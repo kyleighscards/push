@@ -1759,8 +1759,18 @@ header h1 {
 
 #invite-message {
     font-size: 1.1rem;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     color: white;
+}
+
+.invite-settings {
+    font-size: 0.9rem;
+    color: var(--gold);
+    margin-bottom: 20px;
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    display: inline-block;
 }
 
 .invite-buttons {
