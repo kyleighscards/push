@@ -833,6 +833,39 @@ header h1 {
     transform: scale(1.1);
 }
 
+.win-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.rematch-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    margin-top: 10px;
+    position: relative;
+    z-index: 10;
+    animation: buttonPop 0.4s ease-out 0.7s both;
+}
+
+.rematch-btn:hover {
+    transform: scale(1.1);
+}
+
+.rematch-btn:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.rematch-status {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    margin-top: 15px;
+    animation: titleSlide 0.3s ease-out both;
+}
+
 /* Settings Modal */
 .settings-content {
     min-width: 350px;

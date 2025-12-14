@@ -1553,8 +1553,13 @@ class MultiplayerManager {
         await database.ref(`games/${this.currentGameId}/winner`).set(winner);
     }
 
-    async endGame() {
+    async endGame(keepRematchInfo = false) {
         if (!this.currentGameId) return;
+
+        // Store info for potential rematch before clearing
+        const rematchOpponentId = this.opponentId;
+        const rematchOpponentUsername = this.opponentUsername;
+        const rematchGameId = this.currentGameId;
 
         // Mark game as abandoned so opponent knows
         if (this.game.gameActive) {
@@ -1575,8 +1580,161 @@ class MultiplayerManager {
         this.currentGameId = null;
         this.isMultiplayer = false;
         this.isHost = false;
-        this.opponentId = null;
-        this.opponentUsername = null;
+
+        // Keep opponent info for rematch if requested
+        if (keepRematchInfo) {
+            this.rematchOpponentId = rematchOpponentId;
+            this.rematchOpponentUsername = rematchOpponentUsername;
+            this.lastGameId = rematchGameId;
+        } else {
+            this.opponentId = null;
+            this.opponentUsername = null;
+            this.rematchOpponentId = null;
+            this.rematchOpponentUsername = null;
+            this.lastGameId = null;
+        }
+    }
+
+    async requestRematch() {
+        if (!this.rematchOpponentId || !this.lastGameId) return false;
+
+        try {
+            // Create rematch request in Firebase
+            await database.ref(`games/${this.lastGameId}/rematch/${this.userId}`).set({
+                requested: true,
+                timestamp: Date.now()
+            });
+
+            // Listen for opponent's rematch response
+            return new Promise((resolve) => {
+                const rematchRef = database.ref(`games/${this.lastGameId}/rematch`);
+
+                const checkRematch = (snapshot) => {
+                    const rematchData = snapshot.val();
+                    if (rematchData && rematchData[this.rematchOpponentId]?.requested) {
+                        // Both players want rematch!
+                        rematchRef.off('value', checkRematch);
+                        resolve(true);
+                    }
+                };
+
+                rematchRef.on('value', checkRematch);
+
+                // Timeout after 30 seconds
+                setTimeout(() => {
+                    rematchRef.off('value', checkRematch);
+                    resolve(false);
+                }, 30000);
+            });
+        } catch (e) {
+            console.log('Rematch request failed:', e);
+            return false;
+        }
+    }
+
+    async startRematch() {
+        if (!this.rematchOpponentId) return;
+
+        // Restore opponent info
+        this.opponentId = this.rematchOpponentId;
+        this.opponentUsername = this.rematchOpponentUsername;
+
+        // Create new game as host (whoever requested first becomes host based on alphabetical order)
+        const amHost = this.userId < this.opponentId;
+
+        if (amHost) {
+            await this.createRematchGame();
+        } else {
+            // Wait for opponent to create the game
+            await this.waitForRematchGame();
+        }
+    }
+
+    async createRematchGame() {
+        const pileCount = this.game.settings.pileCount;
+        const fullDeck = this.createFullDeck();
+        this.shuffleArray(fullDeck);
+        const player1Deck = fullDeck.slice(0, 26);
+        const player2Deck = fullDeck.slice(26, 52);
+
+        const gameRef = database.ref('games').push();
+        this.currentGameId = gameRef.key;
+        this.isHost = true;
+        this.isMultiplayer = true;
+
+        await gameRef.set({
+            player1: this.userId,
+            player1Username: this.username,
+            player2: this.opponentId,
+            player2Username: this.opponentUsername,
+            status: 'active',
+            currentTurn: 'player1',
+            player1Deck: player1Deck,
+            player2Deck: player2Deck,
+            piles: Array(pileCount).fill([]),
+            pileStates: Array(pileCount).fill(null),
+            settings: this.game.settings,
+            lastMove: null,
+            messages: null,
+            winner: null,
+            isRematch: true
+        });
+
+        // Update both users' inGame status
+        await database.ref(`users/${this.userId}`).update({ inGame: this.currentGameId });
+        await database.ref(`users/${this.opponentId}`).update({ inGame: this.currentGameId });
+
+        // Notify via old game channel
+        if (this.lastGameId) {
+            await database.ref(`games/${this.lastGameId}/rematchGameId`).set(this.currentGameId);
+        }
+
+        this.game.startMultiplayerGame(this.currentGameId, true);
+        this.startGameListeners();
+    }
+
+    async waitForRematchGame() {
+        return new Promise((resolve) => {
+            const rematchRef = database.ref(`games/${this.lastGameId}/rematchGameId`);
+
+            rematchRef.on('value', async (snapshot) => {
+                const newGameId = snapshot.val();
+                if (newGameId) {
+                    rematchRef.off();
+                    this.currentGameId = newGameId;
+                    this.isHost = false;
+                    this.isMultiplayer = true;
+
+                    // Join the new game
+                    const gameSnapshot = await database.ref(`games/${newGameId}`).once('value');
+                    const gameData = gameSnapshot.val();
+
+                    if (gameData) {
+                        this.game.startMultiplayerGame(newGameId, false, gameData);
+                        this.startGameListeners();
+                    }
+                    resolve();
+                }
+            });
+
+            // Timeout
+            setTimeout(() => {
+                rematchRef.off();
+                resolve();
+            }, 10000);
+        });
+    }
+
+    createFullDeck() {
+        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        const deck = [];
+        for (const suit of suits) {
+            for (const rank of ranks) {
+                deck.push({ suit, rank });
+            }
+        }
+        return deck;
     }
 
     shuffleArray(array) {
@@ -2024,6 +2182,14 @@ class PushGame {
         document.getElementById('win-message').textContent = message;
         document.getElementById('win-modal').classList.add('show');
 
+        // Show rematch button for multiplayer games
+        const rematchBtn = document.getElementById('rematch-btn');
+        const rematchStatus = document.getElementById('rematch-status');
+        rematchBtn.style.display = 'inline-block';
+        rematchBtn.disabled = false;
+        rematchBtn.textContent = 'Rematch?';
+        rematchStatus.style.display = 'none';
+
         // Create celebration or commiseration animation
         const animationEl = document.getElementById('win-animation');
         animationEl.innerHTML = '';
@@ -2042,8 +2208,8 @@ class PushGame {
             animationEl.appendChild(span);
         }
 
-        // End the multiplayer game
-        this.multiplayer.endGame();
+        // End the multiplayer game but keep rematch info
+        this.multiplayer.endGame(true);
     }
 
     handleOpponentLeft() {
@@ -2072,8 +2238,47 @@ class PushGame {
             animationEl.appendChild(span);
         }
 
-        // End the multiplayer game
+        // End the multiplayer game (no rematch option when opponent left)
+        document.getElementById('rematch-btn').style.display = 'none';
         this.multiplayer.endGame();
+    }
+
+    async handleRematchRequest() {
+        const rematchBtn = document.getElementById('rematch-btn');
+        const rematchStatus = document.getElementById('rematch-status');
+        const opponentName = this.multiplayer.rematchOpponentUsername || 'Opponent';
+
+        // Disable button and show waiting status
+        rematchBtn.disabled = true;
+        rematchBtn.textContent = 'Waiting...';
+        rematchStatus.style.display = 'block';
+        rematchStatus.textContent = `Waiting for ${opponentName}...`;
+
+        // Request rematch
+        const bothWantRematch = await this.multiplayer.requestRematch();
+
+        if (bothWantRematch) {
+            rematchStatus.textContent = 'Starting rematch!';
+
+            // Close win modal
+            document.getElementById('win-modal').classList.remove('show');
+
+            // Reset UI
+            rematchBtn.style.display = 'none';
+            rematchStatus.style.display = 'none';
+
+            // Start the rematch
+            await this.multiplayer.startRematch();
+        } else {
+            rematchStatus.textContent = `${opponentName} didn't respond`;
+            rematchBtn.textContent = 'Rematch?';
+            rematchBtn.disabled = false;
+
+            // Hide after a moment
+            setTimeout(() => {
+                rematchStatus.style.display = 'none';
+            }, 3000);
+        }
     }
 
     showModeSelection() {
@@ -2399,7 +2604,15 @@ class PushGame {
         });
         document.getElementById('play-again-btn').addEventListener('click', () => {
             soundManager.playClick();
+            // Hide rematch button when going back to mode selection
+            document.getElementById('rematch-btn').style.display = 'none';
+            document.getElementById('rematch-status').style.display = 'none';
             this.showModeSelection();
+        });
+
+        document.getElementById('rematch-btn').addEventListener('click', async () => {
+            soundManager.playClick();
+            await this.handleRematchRequest();
         });
         document.getElementById('rules-btn').addEventListener('click', () => {
             soundManager.playClick();
@@ -3100,6 +3313,10 @@ class PushGame {
 
         // Clear previous confetti
         confettiContainer.innerHTML = '';
+
+        // Hide rematch button for AI games
+        document.getElementById('rematch-btn').style.display = 'none';
+        document.getElementById('rematch-status').style.display = 'none';
 
         // Remove previous classes
         content.classList.remove('victory', 'defeat');
