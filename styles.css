@@ -668,20 +668,31 @@ header h1 {
     margin-bottom: 5px;
 }
 
-/* QR Code Modal */
+/* QR Code Modal - Fixed color scheme regardless of theme */
 .qr-content {
     text-align: center;
     padding: 30px 40px;
+    background: #3d4f5f !important;
+    border: none !important;
 }
 
 .qr-content h2 {
-    font-size: 1.8rem;
+    font-size: 2rem;
     margin-bottom: 10px;
+    color: #e8a838 !important;
 }
 
 .qr-content p {
-    color: rgba(255,255,255,0.8);
+    color: rgba(255,255,255,0.9);
     margin-bottom: 20px;
+}
+
+.qr-content .close-btn {
+    color: rgba(255,255,255,0.7);
+}
+
+.qr-content .close-btn:hover {
+    color: white;
 }
 
 .qr-code-image {
@@ -695,12 +706,12 @@ header h1 {
 
 .qr-url {
     font-family: monospace;
-    font-size: 0.9rem;
-    color: var(--gold) !important;
-    margin-top: 15px !important;
-    padding: 8px 15px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 20px;
+    font-size: 0.95rem;
+    color: #ccc !important;
+    margin-top: 20px !important;
+    padding: 10px 20px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 25px;
     display: inline-block;
 }
 
