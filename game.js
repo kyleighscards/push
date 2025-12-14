@@ -2178,9 +2178,33 @@ class PushGame {
 
         this.gameActive = false;
 
-        const message = didIWin ? 'You Win!' : 'You Lose!';
-        document.getElementById('win-message').textContent = message;
-        document.getElementById('win-modal').classList.add('show');
+        const modal = document.getElementById('win-modal');
+        const content = document.getElementById('win-content');
+        const message = document.getElementById('win-message');
+        const trophy = document.getElementById('win-trophy');
+        const subtitle = document.getElementById('win-subtitle');
+        const confettiContainer = document.getElementById('win-confetti');
+
+        // Clear previous confetti
+        confettiContainer.innerHTML = '';
+
+        // Remove previous classes and apply correct one
+        content.classList.remove('victory', 'defeat');
+
+        if (didIWin) {
+            soundManager.playWin();
+            content.classList.add('victory');
+            message.textContent = "You Win!";
+            trophy.textContent = "🏆";
+            subtitle.textContent = "Congratulations, Champion!";
+            this.createConfetti(confettiContainer);
+        } else {
+            soundManager.playLose();
+            content.classList.add('defeat');
+            message.textContent = "You Lose!";
+            trophy.textContent = "😢";
+            subtitle.textContent = "Better luck next time!";
+        }
 
         // Show rematch button for multiplayer games
         const rematchBtn = document.getElementById('rematch-btn');
@@ -2190,23 +2214,7 @@ class PushGame {
         rematchBtn.textContent = 'Rematch?';
         rematchStatus.style.display = 'none';
 
-        // Create celebration or commiseration animation
-        const animationEl = document.getElementById('win-animation');
-        animationEl.innerHTML = '';
-
-        const symbols = didIWin ? ['🎉', '🏆', '⭐', '🎊'] : ['😢', '💔', '🙁', '😞'];
-        for (let i = 0; i < 20; i++) {
-            const span = document.createElement('span');
-            span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-            span.style.cssText = `
-                position: absolute;
-                font-size: ${Math.random() * 20 + 20}px;
-                left: ${Math.random() * 100}%;
-                animation: float ${Math.random() * 2 + 2}s ease-in-out infinite;
-                animation-delay: ${Math.random() * 2}s;
-            `;
-            animationEl.appendChild(span);
-        }
+        modal.classList.add('show');
 
         // End the multiplayer game but keep rematch info
         this.multiplayer.endGame(true);
