@@ -1200,18 +1200,83 @@ class MultiplayerManager {
             inGame: null
         });
 
-        // Set up disconnect handler
+        // Set up disconnect handler - only updates lastSeen, not online status
+        // We use heartbeats to determine if someone is truly offline
         userRef.onDisconnect().update({
-            online: false,
             lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
+
+        // Start heartbeat - updates lastSeen every 5 seconds
+        this.startHeartbeat();
+
+        // Handle visibility changes (tab switching, etc.)
+        this.setupVisibilityHandler();
 
         // Listen for invites
         this.listenForInvites();
     }
 
+    startHeartbeat() {
+        // Clear any existing heartbeat
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+
+        // Update lastSeen every 5 seconds while online
+        this.heartbeatInterval = setInterval(() => {
+            if (database && this.userId) {
+                database.ref(`users/${this.userId}/lastSeen`).set(
+                    firebase.database.ServerValue.TIMESTAMP
+                );
+            }
+        }, 5000);
+    }
+
+    stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
+    setupVisibilityHandler() {
+        // Remove any existing handler
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+        }
+
+        this.visibilityHandler = () => {
+            if (document.visibilityState === 'visible') {
+                // Tab became visible - resume heartbeat and update status
+                this.startHeartbeat();
+                if (database && this.userId) {
+                    database.ref(`users/${this.userId}`).update({
+                        online: true,
+                        lastSeen: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            }
+            // Don't stop heartbeat on hidden - let it continue in background if possible
+        };
+
+        document.addEventListener('visibilitychange', this.visibilityHandler);
+
+        // Also handle page unload for actual closes
+        window.addEventListener('beforeunload', () => {
+            if (database && this.userId) {
+                // Synchronously mark as offline on actual page close
+                database.ref(`users/${this.userId}`).update({
+                    online: false,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+        });
+    }
+
     async goOffline() {
         if (!database || !this.userId) return;
+
+        this.stopHeartbeat();
 
         await database.ref(`users/${this.userId}`).update({
             online: false,
@@ -1511,14 +1576,56 @@ class MultiplayerManager {
             }
         });
 
-        // Also listen for opponent going offline
-        if (this.opponentId) {
-            database.ref(`users/${this.opponentId}/online`).on('value', (snapshot) => {
-                const online = snapshot.val();
-                if (online === false && this.currentGameId && this.game.gameActive) {
-                    this.game.handleOpponentLeft();
+        // Monitor opponent's heartbeat instead of just online status
+        // This is more resilient to tab switching and brief disconnections
+        this.startOpponentHeartbeatMonitor();
+    }
+
+    startOpponentHeartbeatMonitor() {
+        if (!this.opponentId) return;
+
+        // Clear any existing monitor
+        if (this.opponentMonitorInterval) {
+            clearInterval(this.opponentMonitorInterval);
+        }
+
+        const GRACE_PERIOD = 15000; // 15 seconds grace period before considering opponent gone
+        let opponentMissingCount = 0;
+
+        // Check opponent's lastSeen every 5 seconds
+        this.opponentMonitorInterval = setInterval(async () => {
+            if (!this.currentGameId || !this.game.gameActive) {
+                this.stopOpponentHeartbeatMonitor();
+                return;
+            }
+
+            try {
+                const snapshot = await database.ref(`users/${this.opponentId}/lastSeen`).once('value');
+                const lastSeen = snapshot.val();
+                const now = Date.now();
+                const timeSinceLastSeen = now - lastSeen;
+
+                if (timeSinceLastSeen > GRACE_PERIOD) {
+                    opponentMissingCount++;
+                    // Require 2 consecutive checks (10+ seconds) before declaring opponent gone
+                    if (opponentMissingCount >= 2) {
+                        this.stopOpponentHeartbeatMonitor();
+                        this.game.handleOpponentLeft();
+                    }
+                } else {
+                    // Opponent is still active, reset counter
+                    opponentMissingCount = 0;
                 }
-            });
+            } catch (e) {
+                console.log('Error checking opponent heartbeat:', e);
+            }
+        }, 5000);
+    }
+
+    stopOpponentHeartbeatMonitor() {
+        if (this.opponentMonitorInterval) {
+            clearInterval(this.opponentMonitorInterval);
+            this.opponentMonitorInterval = null;
         }
     }
 
@@ -1606,11 +1713,9 @@ class MultiplayerManager {
             await database.ref(`users/${this.userId}`).update({ inGame: null });
         }
 
-        // Clean up listeners
+        // Clean up listeners and monitors
         database.ref(`games/${this.currentGameId}`).off();
-        if (this.opponentId) {
-            database.ref(`users/${this.opponentId}/online`).off();
-        }
+        this.stopOpponentHeartbeatMonitor();
 
         this.currentGameId = null;
         this.isMultiplayer = false;
