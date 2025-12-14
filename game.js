@@ -223,13 +223,13 @@ class SoundManager {
         this.resume();
 
         // Create noise-based shuffle sound
-        const bufferSize = this.audioContext.sampleRate * 0.3; // 0.3 seconds
+        const bufferSize = this.audioContext.sampleRate * 0.25; // 0.25 seconds (shorter)
         const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
         const data = buffer.getChannelData(0);
 
-        // Generate filtered noise for paper/card sound
+        // Generate filtered noise for paper/card sound (softer)
         for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * 0.3;
+            data[i] = (Math.random() * 2 - 1) * 0.15;
         }
 
         const source = this.audioContext.createBufferSource();
@@ -238,15 +238,15 @@ class SoundManager {
 
         source.buffer = buffer;
         filter.type = 'bandpass';
-        filter.frequency.value = 3000;
-        filter.Q.value = 0.5;
+        filter.frequency.value = 2500;
+        filter.Q.value = 0.7;
 
         source.connect(filter);
         filter.connect(gain);
         gain.connect(this.audioContext.destination);
 
-        gain.gain.setValueAtTime(0.2, this.audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.005, this.audioContext.currentTime + 0.25);
 
         source.start();
     }
