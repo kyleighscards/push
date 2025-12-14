@@ -47,6 +47,256 @@ const NAME_NOUNS = [
     'Explorer'    // trip
 ];
 
+// ===== SOUND MANAGER =====
+class SoundManager {
+    constructor() {
+        this.audioContext = null;
+        this.enabled = true;
+        this.initialized = false;
+    }
+
+    // Initialize audio context on first user interaction
+    init() {
+        if (this.initialized) return;
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+        } catch (e) {
+            console.log('Web Audio not supported');
+            this.enabled = false;
+        }
+    }
+
+    // Resume audio context if suspended (browser autoplay policy)
+    async resume() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+    }
+
+    // Play a click/tap sound for UI interactions
+    playClick() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+
+        gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gain.gain.exponentialDecayTo = 0.01;
+        gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+
+        osc.start(this.audioContext.currentTime);
+        osc.stop(this.audioContext.currentTime + 0.1);
+    }
+
+    // Play sound when logo fades (gentle chime)
+    playLogoFade() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 chord
+        notes.forEach((freq, i) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+
+            const startTime = this.audioContext.currentTime + i * 0.1;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.8);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.8);
+        });
+    }
+
+    // Play sound for "Jacked!" moment (dramatic horn-like)
+    playJacked() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Dramatic descending tones
+        const notes = [440, 349.23, 293.66]; // A4, F4, D4
+        notes.forEach((freq, i) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'sawtooth';
+
+            const startTime = this.audioContext.currentTime + i * 0.15;
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+        });
+    }
+
+    // Play sound for Push! moment (exciting fanfare)
+    playPush() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Ascending triumphant notes
+        const notes = [392, 493.88, 587.33, 783.99]; // G4, B4, D5, G5
+        notes.forEach((freq, i) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'square';
+
+            const startTime = this.audioContext.currentTime + i * 0.08;
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.25);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.25);
+        });
+    }
+
+    // Play card shuffle sound (for cards being pushed)
+    playShuffle() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Create noise-based shuffle sound
+        const bufferSize = this.audioContext.sampleRate * 0.3; // 0.3 seconds
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Generate filtered noise for paper/card sound
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.3;
+        }
+
+        const source = this.audioContext.createBufferSource();
+        const filter = this.audioContext.createBiquadFilter();
+        const gain = this.audioContext.createGain();
+
+        source.buffer = buffer;
+        filter.type = 'bandpass';
+        filter.frequency.value = 3000;
+        filter.Q.value = 0.5;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        gain.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+
+        source.start();
+    }
+
+    // Play individual card sound (for card-by-card animation)
+    playCardFlip() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Short percussive click
+        const bufferSize = this.audioContext.sampleRate * 0.05;
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            const t = i / this.audioContext.sampleRate;
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 50);
+        }
+
+        const source = this.audioContext.createBufferSource();
+        const filter = this.audioContext.createBiquadFilter();
+        const gain = this.audioContext.createGain();
+
+        source.buffer = buffer;
+        filter.type = 'highpass';
+        filter.frequency.value = 2000;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        gain.gain.value = 0.15;
+
+        source.start();
+    }
+
+    // Play win sound (celebratory)
+    playWin() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Happy ascending arpeggio
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+
+            const startTime = this.audioContext.currentTime + i * 0.12;
+            gain.gain.setValueAtTime(0.12, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.4);
+        });
+    }
+
+    // Play lose sound (sad trombone style)
+    playLose() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Descending sad notes
+        const notes = [293.66, 277.18, 261.63, 246.94]; // D4, C#4, C4, B3
+        notes.forEach((freq, i) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+
+            const startTime = this.audioContext.currentTime + i * 0.3;
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.5);
+        });
+    }
+}
+
+// Global sound manager instance
+const soundManager = new SoundManager();
+
 // Map themed names to theme suggestions (all 40 names have themes)
 const THEME_NAME_HINTS = {
     // Adjectives
@@ -1375,11 +1625,13 @@ class PushGame {
 
         // Mode selection
         document.getElementById('play-ai-btn').addEventListener('click', () => {
+            soundManager.playClick();
             document.getElementById('mode-modal').classList.remove('show');
             this.startNewGame();
         });
 
         document.getElementById('play-friend-btn').addEventListener('click', () => {
+            soundManager.playClick();
             if (!isFirebaseReady()) {
                 alert('Online play is not available right now. Please try again later or play against the computer!');
                 return;
@@ -2043,9 +2295,18 @@ class PushGame {
     }
 
     initializeEventListeners() {
-        document.getElementById('new-game-btn').addEventListener('click', () => this.showModeSelection());
-        document.getElementById('play-again-btn').addEventListener('click', () => this.showModeSelection());
-        document.getElementById('rules-btn').addEventListener('click', () => this.showRules());
+        document.getElementById('new-game-btn').addEventListener('click', () => {
+            soundManager.playClick();
+            this.showModeSelection();
+        });
+        document.getElementById('play-again-btn').addEventListener('click', () => {
+            soundManager.playClick();
+            this.showModeSelection();
+        });
+        document.getElementById('rules-btn').addEventListener('click', () => {
+            soundManager.playClick();
+            this.showRules();
+        });
         document.getElementById('close-rules').addEventListener('click', () => this.hideRules());
 
         // Share QR modal listeners
@@ -2236,6 +2497,9 @@ class PushGame {
         } else {
             if (!this.gameActive || !this.isPlayerTurn || !this.currentCard) return;
         }
+
+        // Play click sound
+        soundManager.playClick();
 
         const card = this.currentCard;
         this.currentCard = null;
@@ -2734,6 +2998,7 @@ class PushGame {
         content.classList.remove('victory', 'defeat');
 
         if (playerWon) {
+            soundManager.playWin();
             content.classList.add('victory');
             message.textContent = "You Win!";
             trophy.textContent = "🏆";
@@ -2741,6 +3006,7 @@ class PushGame {
             // Create confetti
             this.createConfetti(confettiContainer);
         } else {
+            soundManager.playLose();
             content.classList.add('defeat');
             message.textContent = "You Lose!";
             trophy.textContent = "😢";
@@ -2804,6 +3070,13 @@ class PushGame {
     showPushPopup(message = 'PUSH!') {
         const popup = document.createElement('div');
         popup.className = 'push-popup';
+
+        // Play appropriate sound
+        if (message === 'JACKED!') {
+            soundManager.playJacked();
+        } else {
+            soundManager.playPush();
+        }
 
         // Create logo-style letters
         const letters = message.split('');
@@ -2891,6 +3164,9 @@ class PushGame {
         const pileRect = pileEl.getBoundingClientRect();
         const cardCount = pile.length;
 
+        // Play shuffle sound at start
+        soundManager.playShuffle();
+
         // Get target position
         const targetEl = toPlayer
             ? document.getElementById('player-deck')
@@ -2912,6 +3188,9 @@ class PushGame {
 
         cardsToTransfer.forEach((card, index) => {
             setTimeout(() => {
+                // Play card flip sound for each card
+                soundManager.playCardFlip();
+
                 // Create flying card element
                 const flyingCard = document.createElement('div');
                 flyingCard.className = `flying-card ${toPlayer ? 'to-player' : 'to-opponent'}`;
@@ -3123,6 +3402,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loadingModal = document.getElementById('loading-modal');
     setTimeout(() => {
         loadingModal.classList.add('fading');
+
+        // Play logo fade sound and initialize audio context
+        soundManager.init();
+        soundManager.playLogoFade();
+
         setTimeout(() => {
             loadingModal.classList.remove('show');
             loadingModal.classList.remove('fading');
