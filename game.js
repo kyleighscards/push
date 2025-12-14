@@ -1627,7 +1627,8 @@ class PushGame {
             pileCount: 3,
             jackOnJack: true,
             skillLevel: 'expert',  // 'kid', 'fun', 'expert'
-            hintsAndTips: true     // Show fun hints during special moments
+            hintsAndTips: true,    // Show fun hints during special moments
+            muteSounds: false      // Mute all game sounds
         };
 
         // Status messages (for easy customization)
@@ -2132,6 +2133,7 @@ class PushGame {
         const jackOnJackToggle = document.getElementById('jack-on-jack');
         const skillLevelSelect = document.getElementById('skill-level');
         const hintsToggle = document.getElementById('hints-and-tips');
+        const muteToggle = document.getElementById('mute-sounds');
 
         if (pileCountSelect) {
             pileCountSelect.value = this.settings.pileCount.toString();
@@ -2145,6 +2147,11 @@ class PushGame {
         if (hintsToggle) {
             hintsToggle.checked = this.settings.hintsAndTips;
         }
+        if (muteToggle) {
+            muteToggle.checked = this.settings.muteSounds;
+        }
+        // Apply mute setting to sound manager
+        soundManager.enabled = !this.settings.muteSounds;
     }
 
     // Theme methods
@@ -2426,6 +2433,12 @@ class PushGame {
 
         document.getElementById('hints-and-tips').addEventListener('change', (e) => {
             this.settings.hintsAndTips = e.target.checked;
+            this.saveSettings();
+        });
+
+        document.getElementById('mute-sounds').addEventListener('change', (e) => {
+            this.settings.muteSounds = e.target.checked;
+            soundManager.enabled = !this.settings.muteSounds;
             this.saveSettings();
         });
 
