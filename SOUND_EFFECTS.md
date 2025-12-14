@@ -13,6 +13,7 @@ All sounds are generated using the Web Audio API - no external sound files neede
 | Each card flying | `playCardFlip()` | Short percussive click |
 | Player plays card | `playCardPlay()` | Soft subtle tone (600Hz, very quiet) |
 | Opponent plays card | `playOpponentCard()` | Even softer tone (500Hz, barely audible) |
+| Watch out! | `playWatchOut()` | Quick alert beeps (two rising tones) |
 | UI click | `playClick()` | Simple UI click sound |
 | New Game button | `playClick()` | Simple UI click sound |
 | Mode selection | `playClick()` | Simple UI click sound |
@@ -41,4 +42,5 @@ soundManager.playShuffle()    // Card shuffle
 soundManager.playCardFlip()   // Individual card sound
 soundManager.playWin()        // Victory sound
 soundManager.playLose()       // Defeat sound
+soundManager.playWatchOut()   // Warning alert beeps
 ```

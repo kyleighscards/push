@@ -569,11 +569,11 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #FF69B4;
+    border: 2px solid #FF6600;
 }
 
 .share-btn:hover {
-    background: #fff5f9;
+    background: #fff8f0;
     transform: scale(1.1);
 }
 

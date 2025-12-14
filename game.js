@@ -334,6 +334,36 @@ class SoundManager {
             osc.stop(startTime + 0.5);
         });
     }
+
+    // Play "Watch out!" alert sound (quick warning beeps)
+    playWatchOut() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        // Two quick alert beeps - rising then falling
+        const beeps = [
+            { freq: 880, time: 0 },      // A5
+            { freq: 1100, time: 0.1 }    // C#6 (higher)
+        ];
+
+        beeps.forEach(({ freq, time }) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'square';
+
+            const startTime = this.audioContext.currentTime + time;
+            gain.gain.setValueAtTime(0.08, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.08);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.08);
+        });
+    }
 }
 
 // Global sound manager instance
@@ -1600,6 +1630,22 @@ class PushGame {
             hintsAndTips: true     // Show fun hints during special moments
         };
 
+        // Status messages (for easy customization)
+        this.messages = {
+            clickPile: "Click a pile to play your card!",
+            yourTurn: "Your turn!",
+            opponentTurn: "{name}'s turn...",
+            opponentThinking: "Opponent is thinking...",
+            opponentPlayed: "Opponent played {card}",
+            youGotJacked: "You got JACKED! Opponent takes the pile!",
+            opponentGotJacked: "You got JACKED! You take the pile!",
+            specialOnSpecialYou: "Special on special! You take the pile!",
+            specialOnSpecialOpp: "Special on special! Opponent takes the pile.",
+            pushYouTake: "PUSH! You take the pile!",
+            pushOppTake: "PUSH! Opponent takes the pile!",
+            watchOut: "Watch out!"
+        };
+
         // For Expert mode status display
         this.lastExpertRule = '';
 
@@ -1934,7 +1980,7 @@ class PushGame {
         this.renderPilesHTML();
         this.renderPiles();
         this.updateUI();
-        this.setStatus(this.isMyTurn ? 'Your turn!' : `${opponentName}'s turn...`);
+        this.setStatus(this.isMyTurn ? this.messages.yourTurn : this.messages.opponentTurn.replace('{name}', opponentName));
 
         if (this.isMyTurn) {
             this.drawCard();
@@ -2531,7 +2577,7 @@ class PushGame {
         this.currentCard = this.playerDeck.pop();
         this.renderCurrentCard();
         this.updateUI();
-        this.setStatus("Click a pile to play your card!");
+        this.setStatus(this.messages.clickPile);
         this.highlightPiles(true);
     }
 
@@ -2582,7 +2628,7 @@ class PushGame {
                 if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) {
                     // Jack on Jack = the OTHER player takes pile (JACKED!)
                     this.showPushPopup('JACKED!');
-                    this.setStatus(isPlayer ? "You got JACKED! Opponent takes the pile!" : "You got JACKED! You take the pile!");
+                    this.setStatus(isPlayer ? this.messages.youGotJacked : this.messages.opponentGotJacked);
 
                     setTimeout(() => {
                         // isPlayer played Jack on Jack, so opponent takes pile
@@ -2595,7 +2641,7 @@ class PushGame {
                 // Special on special = YOU take the pile (penalty PUSH!)
                 // (This also handles Jack on Jack when setting is OFF)
                 this.showPushPopup();
-                this.setStatus(isPlayer ? "Special on special! You take the pile!" : "Special on special! Opponent takes the pile.");
+                this.setStatus(isPlayer ? this.messages.specialOnSpecialYou : this.messages.specialOnSpecialOpp);
 
                 setTimeout(() => {
                     // isPlayer played special on special, so isPlayer takes pile
@@ -2618,7 +2664,7 @@ class PushGame {
                 playedBy: playedBy
             };
             if (!isPlayer) {
-                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
+                this.setStatus(this.messages.opponentPlayed.replace('{card}', `${card.rank}${this.suitSymbols[card.suit]}`));
             }
         } else if (pileState) {
             // Number card played on a pile with an active special card
@@ -2631,7 +2677,7 @@ class PushGame {
                 this.renderPiles();
                 this.updateUI();
                 this.showPushPopup();
-                this.setStatus(isPlayer ? "PUSH! Opponent takes the pile!" : "PUSH! You take the pile!");
+                this.setStatus(isPlayer ? this.messages.pushOppTake : this.messages.pushYouTake);
 
                 setTimeout(() => {
                     // Third param: isPlayer just played, so pass isPlayer
@@ -2639,10 +2685,10 @@ class PushGame {
                 }, 1500);
                 return;
             } else if (!isPlayer) {
-                this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
+                this.setStatus(this.messages.opponentPlayed.replace('{card}', `${card.rank}${this.suitSymbols[card.suit]}`));
             }
         } else if (!isPlayer) {
-            this.setStatus(`Opponent played ${card.rank}${this.suitSymbols[card.suit]}`);
+            this.setStatus(this.messages.opponentPlayed.replace('{card}', `${card.rank}${this.suitSymbols[card.suit]}`));
         }
 
         this.renderPiles();
@@ -3284,14 +3330,14 @@ class PushGame {
                 this.isMyTurn = false;
                 this.isPlayerTurn = false;
                 const oppName = this.multiplayer.opponentUsername || 'Opponent';
-                this.setStatus(`${oppName}'s turn...`);
+                this.setStatus(this.messages.opponentTurn.replace('{name}', oppName));
                 // Don't call opponentTurn() - wait for Firebase update
             } else {
                 // Opponent just finished, my turn
                 this.currentTurnPlayer = 'player';
                 this.isMyTurn = true;
                 this.isPlayerTurn = true;
-                this.setStatus('Your turn!');
+                this.setStatus(this.messages.yourTurn);
                 setTimeout(() => this.drawCard(), 300);
             }
         } else {
@@ -3300,7 +3346,7 @@ class PushGame {
                 // Player just finished, opponent's turn
                 this.currentTurnPlayer = 'opponent';
                 this.isPlayerTurn = false;
-                this.setStatus("Opponent is thinking...");
+                this.setStatus(this.messages.opponentThinking);
                 setTimeout(() => this.opponentTurn(), 300);
             } else {
                 // Opponent just finished, player's turn
