@@ -1552,6 +1552,17 @@ header h1 {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+.mode-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mode-btn.disabled:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+}
+
 .mode-btn:hover .mode-btn-glow {
     opacity: 1;
 }

@@ -369,13 +369,20 @@ Both cookies required - if one missing, treated as new user.
 
 # Summary
 
-**Most Likely Problems:**
-1. **Race condition in goOnline()** - Returning users might see username modal
-2. **Modal overlap** - Theme suggestion vs mode selection timing
-3. **Missing await** - Username might not save before proceeding
+**Issues Found and Fixed:**
+
+| Issue | Problem | Fix |
+|-------|---------|-----|
+| #1 | goOnline() not awaited in initializeUser() | Made initializeUser() async, added waitForInit() promise |
+| #2 | Theme suggestion at T+1000ms overlaps loading | Delayed to T+3000ms (after loading screen) |
+| #3 | completeUsernameSubmission() not awaited | Added async/await to event handlers |
+| #4 | Invite timeout fires after accept/decline | Store timeout ID and clearTimeout() on response |
+| #5 | Settings might not apply to new game | Added loadSettings() call in startNewGame() |
+| #6 | No Firebase error feedback | Added isFirebaseReady() check, disabled button, alert on click |
 
 **To Test:**
 1. Clear cookies and localStorage, reload - verify new user flow
-2. With existing cookies, reload quickly - check for username modal flash
-3. With no saved theme, watch for modal overlap at ~1-3 seconds
-4. Send invite, have it accepted at 29 seconds - check for double alerts
+2. With existing cookies, reload quickly - no username modal flash
+3. With no saved theme, theme suggestion appears after loading screen gone
+4. Send invite, have it accepted at 29 seconds - no double alerts
+5. Disable network, reload - Players button should be disabled/grayed

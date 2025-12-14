@@ -745,12 +745,20 @@ const firebaseConfig = {
 // Initialize Firebase
 let firebaseApp = null;
 let database = null;
+let firebaseReady = false;
 
 try {
     firebaseApp = firebase.initializeApp(firebaseConfig);
     database = firebase.database();
+    firebaseReady = true;
 } catch (e) {
     console.log('Firebase initialization failed:', e);
+    firebaseReady = false;
+}
+
+// Check if Firebase is available
+function isFirebaseReady() {
+    return firebaseReady && database !== null;
 }
 
 // ===== COOKIE HELPERS =====
@@ -783,10 +791,10 @@ class MultiplayerManager {
         this.inviteTimeout = null;
         this.pendingInviteId = null;
 
-        this.initializeUser();
+        this.initPromise = this.initializeUser();
     }
 
-    initializeUser() {
+    async initializeUser() {
         // Check for existing user in cookies
         const savedUserId = getCookie('pushUserId');
         const savedUsername = getCookie('pushUsername');
@@ -794,12 +802,17 @@ class MultiplayerManager {
         if (savedUserId && savedUsername) {
             this.userId = savedUserId;
             this.username = savedUsername;
-            this.goOnline();
+            await this.goOnline();
         }
     }
 
     hasUsername() {
         return this.username !== null;
+    }
+
+    // Wait for initialization to complete (for callers that need Firebase ready)
+    async waitForInit() {
+        return this.initPromise;
     }
 
     async setUsername(username) {
@@ -980,26 +993,8 @@ class MultiplayerManager {
         this.opponentId = targetUserId;
         this.opponentUsername = targetName;
 
-        // Listen for response
-        inviteRef.on('value', async (snapshot) => {
-            const invite = snapshot.val();
-            if (!invite) return;
-
-            if (invite.status === 'accepted') {
-                inviteRef.off();
-                document.getElementById('waiting-modal').classList.remove('show');
-                await this.createGame();
-            } else if (invite.status === 'declined') {
-                inviteRef.off();
-                document.getElementById('waiting-modal').classList.remove('show');
-                alert(`${targetName} declined the invite`);
-                this.opponentId = null;
-                this.opponentUsername = null;
-            }
-        });
-
-        // Auto-cancel after 30 seconds
-        setTimeout(async () => {
+        // Auto-cancel after 30 seconds (store timeout ID so we can clear it)
+        const inviteTimeoutId = setTimeout(async () => {
             const snap = await inviteRef.once('value');
             if (snap.val() && snap.val().status === 'pending') {
                 await inviteRef.remove();
@@ -1007,6 +1002,26 @@ class MultiplayerManager {
                 alert('Invite expired');
             }
         }, 30000);
+
+        // Listen for response
+        inviteRef.on('value', async (snapshot) => {
+            const invite = snapshot.val();
+            if (!invite) return;
+
+            if (invite.status === 'accepted') {
+                clearTimeout(inviteTimeoutId);  // Clear timeout on accept
+                inviteRef.off();
+                document.getElementById('waiting-modal').classList.remove('show');
+                await this.createGame();
+            } else if (invite.status === 'declined') {
+                clearTimeout(inviteTimeoutId);  // Clear timeout on decline
+                inviteRef.off();
+                document.getElementById('waiting-modal').classList.remove('show');
+                alert(`${targetName} declined the invite`);
+                this.opponentId = null;
+                this.opponentUsername = null;
+            }
+        });
     }
 
     cancelInvite() {
@@ -1342,20 +1357,20 @@ class PushGame {
         document.getElementById('username-submit').addEventListener('click', () => this.submitUsername());
 
         // Theme suggestion modal buttons
-        document.getElementById('accept-name-theme-btn').addEventListener('click', () => {
+        document.getElementById('accept-name-theme-btn').addEventListener('click', async () => {
             if (this.pendingThemeSuggestion) {
                 const setId = this.getThemeSetForTheme(this.pendingThemeSuggestion);
                 this.applyTheme(setId, this.pendingThemeSuggestion);
                 this.pendingThemeSuggestion = null;
             }
             document.getElementById('name-theme-modal').classList.remove('show');
-            this.completeUsernameSubmission();
+            await this.completeUsernameSubmission();
         });
 
-        document.getElementById('decline-name-theme-btn').addEventListener('click', () => {
+        document.getElementById('decline-name-theme-btn').addEventListener('click', async () => {
             this.pendingThemeSuggestion = null;
             document.getElementById('name-theme-modal').classList.remove('show');
-            this.completeUsernameSubmission();
+            await this.completeUsernameSubmission();
         });
 
         // Mode selection
@@ -1365,6 +1380,10 @@ class PushGame {
         });
 
         document.getElementById('play-friend-btn').addEventListener('click', () => {
+            if (!isFirebaseReady()) {
+                alert('Online play is not available right now. Please try again later or play against the computer!');
+                return;
+            }
             document.getElementById('mode-modal').classList.remove('show');
             this.showLobby();
         });
@@ -1728,6 +1747,16 @@ class PushGame {
         // Reset opponent name display
         document.querySelector('.player-info.opponent .player-name').textContent = "Opponent's Cards";
 
+        // Update Players button based on Firebase availability
+        const playersBtn = document.getElementById('play-friend-btn');
+        if (!isFirebaseReady()) {
+            playersBtn.classList.add('disabled');
+            playersBtn.title = 'Online play unavailable';
+        } else {
+            playersBtn.classList.remove('disabled');
+            playersBtn.title = '';
+        }
+
         // Show mode selection
         document.getElementById('mode-modal').classList.add('show');
     }
@@ -1871,10 +1900,10 @@ class PushGame {
 
         const suggestion = this.getThemeSuggestion();
         if (suggestion) {
-            // Show suggestion after a short delay
+            // Show suggestion after loading screen is gone (loads at T+2750ms)
             setTimeout(() => {
                 this.showThemeSuggestion(suggestion);
-            }, 1000);
+            }, 3000);
         }
     }
 
@@ -2127,6 +2156,9 @@ class PushGame {
     startNewGame() {
         // Hide win modal if showing
         document.getElementById('win-modal').classList.remove('show');
+
+        // Reload settings from localStorage to ensure we have the latest
+        this.loadSettings();
 
         // Create and shuffle deck
         const fullDeck = this.shuffleDeck(this.createDeck());
@@ -3073,8 +3105,11 @@ class PushGame {
 }
 
 // Initialize game when page loads
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     window.game = new PushGame();
+
+    // Wait for multiplayer initialization to complete (Firebase connection)
+    await window.game.multiplayer.waitForInit();
 
     // Check if user needs to set username
     const hasUsername = window.game.multiplayer.hasUsername();
