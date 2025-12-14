@@ -97,6 +97,48 @@ class SoundManager {
         osc.stop(this.audioContext.currentTime + 0.1);
     }
 
+    // Play a soft sound when player plays a card (less obtrusive than click)
+    playCardPlay() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.frequency.value = 600; // Lower frequency, softer
+        osc.type = 'sine';
+
+        gain.gain.setValueAtTime(0.05, this.audioContext.currentTime); // Much softer volume
+        gain.gain.exponentialRampToValueAtTime(0.005, this.audioContext.currentTime + 0.06);
+
+        osc.start(this.audioContext.currentTime);
+        osc.stop(this.audioContext.currentTime + 0.06);
+    }
+
+    // Play an even softer sound when opponent plays a card
+    playOpponentCard() {
+        if (!this.enabled || !this.audioContext) return;
+        this.resume();
+
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.frequency.value = 500; // Even lower frequency
+        osc.type = 'sine';
+
+        gain.gain.setValueAtTime(0.025, this.audioContext.currentTime); // Very soft
+        gain.gain.exponentialRampToValueAtTime(0.003, this.audioContext.currentTime + 0.05);
+
+        osc.start(this.audioContext.currentTime);
+        osc.stop(this.audioContext.currentTime + 0.05);
+    }
+
     // Play sound when logo fades (gentle chime)
     playLogoFade() {
         if (!this.enabled || !this.audioContext) return;
@@ -1916,6 +1958,9 @@ class PushGame {
         }
         this.updateUI();
 
+        // Play soft opponent card sound
+        soundManager.playOpponentCard();
+
         // Animate the opponent's card
         this.animateCardToPlay(card, pileIndex, 'opponent', () => {
             this.processCardPlay(card, pileIndex, 'opponent');
@@ -2498,8 +2543,8 @@ class PushGame {
             if (!this.gameActive || !this.isPlayerTurn || !this.currentCard) return;
         }
 
-        // Play click sound
-        soundManager.playClick();
+        // Play soft card sound
+        soundManager.playCardPlay();
 
         const card = this.currentCard;
         this.currentCard = null;
@@ -2674,6 +2719,9 @@ class PushGame {
         if (this.settings.skillLevel === 'expert' && this.lastExpertRule) {
             console.log(this.lastExpertRule);
         }
+
+        // Play soft opponent card sound
+        soundManager.playOpponentCard();
 
         // Animate card moving to pile, then process the play
         this.animateCardToPlay(card, pileIndex, 'opponent', () => {

@@ -11,7 +11,9 @@ All sounds are generated using the Web Audio API - no external sound files neede
 | PUSH! popup | `playPush()` | Exciting ascending fanfare |
 | Card pile take | `playShuffle()` | Filtered noise shuffle sound |
 | Each card flying | `playCardFlip()` | Short percussive click |
-| Click on pile | `playClick()` | Simple UI click sound |
+| Player plays card | `playCardPlay()` | Soft subtle tone (600Hz, very quiet) |
+| Opponent plays card | `playOpponentCard()` | Even softer tone (500Hz, barely audible) |
+| UI click | `playClick()` | Simple UI click sound |
 | New Game button | `playClick()` | Simple UI click sound |
 | Mode selection | `playClick()` | Simple UI click sound |
 | You Win! | `playWin()` | Happy ascending arpeggio |
@@ -28,13 +30,15 @@ All sounds are generated using the Web Audio API - no external sound files neede
 ## SoundManager Class
 
 ```javascript
-soundManager.init()        // Initialize audio context
-soundManager.playClick()   // UI click
-soundManager.playLogoFade() // Logo transition
-soundManager.playJacked()  // JACKED! moment
-soundManager.playPush()    // PUSH! moment
-soundManager.playShuffle() // Card shuffle
-soundManager.playCardFlip() // Individual card sound
-soundManager.playWin()     // Victory sound
-soundManager.playLose()    // Defeat sound
+soundManager.init()           // Initialize audio context
+soundManager.playClick()      // UI click
+soundManager.playCardPlay()   // Player plays a card (soft)
+soundManager.playOpponentCard() // Opponent plays (even softer)
+soundManager.playLogoFade()   // Logo transition
+soundManager.playJacked()     // JACKED! moment
+soundManager.playPush()       // PUSH! moment
+soundManager.playShuffle()    // Card shuffle
+soundManager.playCardFlip()   // Individual card sound
+soundManager.playWin()        // Victory sound
+soundManager.playLose()       // Defeat sound
 ```
