@@ -1992,6 +1992,9 @@ class PushGame {
         // For Expert mode status display
         this.lastExpertRule = '';
 
+        // For "Watch out!" warning
+        this.watchOutShown = false;
+
         this.playerDeck = [];
         this.opponentDeck = [];
         this.piles = [];
@@ -2304,6 +2307,7 @@ class PushGame {
         this.currentCard = null;
         this.gameActive = true;
         this.currentTurnPlayer = isHost ? 'player' : 'opponent';
+        this.watchOutShown = false;
 
         // Close all modals
         document.getElementById('mode-modal').classList.remove('show');
@@ -2932,6 +2936,7 @@ class PushGame {
         this.isPlayerTurn = true;
         this.currentTurnPlayer = 'player';
         this.gameActive = true;
+        this.watchOutShown = false;
 
         // Render piles HTML based on pile count
         this.renderPilesHTML();
@@ -3103,6 +3108,11 @@ class PushGame {
 
         // Switch turns - strictly alternate
         this.switchTurn();
+
+        // Check for "Watch out!" warning after turn switches
+        if (this.checkAllPilesAtTwoToPush()) {
+            this.showWatchOutHint();
+        }
     }
 
     animateCardToPlay(card, pileIndex, fromWho, callback) {
@@ -3596,6 +3606,70 @@ class PushGame {
         setTimeout(() => {
             popup.remove();
         }, 1500);
+    }
+
+    // Check if all piles are at "2 to push" - dangerous situation warning
+    checkAllPilesAtTwoToPush() {
+        // Only show to the player whose turn it is
+        const isMyTurn = this.isMultiplayerGame ? this.isMyTurn : this.isPlayerTurn;
+        if (!isMyTurn) return false;
+
+        // Only show if the player does NOT have a special card
+        if (this.currentCard && this.isSpecialCard(this.currentCard)) return false;
+
+        const pileCount = this.settings.pileCount;
+        let pilesAtTwo = 0;
+        let activePiles = 0;
+
+        for (let i = 0; i < pileCount; i++) {
+            const pileState = this.pileStates[i];
+            if (pileState) {
+                activePiles++;
+                const remaining = pileState.targetCount - pileState.count;
+                if (remaining === 2) {
+                    pilesAtTwo++;
+                }
+            }
+        }
+
+        // All piles must be active AND all at exactly 2 to push
+        return activePiles === pileCount && pilesAtTwo === pileCount;
+    }
+
+    // Show "Watch out!" warning with dramatic effect
+    showWatchOutHint() {
+        // Prevent showing multiple times in a row
+        if (this.watchOutShown) return;
+        this.watchOutShown = true;
+
+        // Play the dramatic soap opera sting
+        soundManager.playWatchOut();
+
+        // Create container
+        const container = document.createElement('div');
+        container.className = 'watchout-hint-container';
+
+        // Create slam burst lines
+        for (let i = 0; i < 12; i++) {
+            const line = document.createElement('div');
+            line.className = 'slam-line';
+            line.style.transform = `rotate(${i * 30}deg)`;
+            container.appendChild(line);
+        }
+
+        // Create text
+        const text = document.createElement('div');
+        text.className = 'watchout-hint-text';
+        text.textContent = 'Watch out!';
+        container.appendChild(text);
+
+        document.body.appendChild(container);
+
+        // Remove after animation
+        setTimeout(() => {
+            container.remove();
+            this.watchOutShown = false;
+        }, 2000);
     }
 
     animatePileTake(pileIndex, toPlayer, playerJustPlayed) {
