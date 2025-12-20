@@ -97,46 +97,70 @@ class SoundManager {
         osc.stop(this.audioContext.currentTime + 0.1);
     }
 
-    // Play a soft sound when player plays a card (less obtrusive than click)
+    // Play a soft shuffle sound when player plays a card
     playCardPlay() {
         if (!this.enabled || !this.audioContext) return;
         this.resume();
 
-        const osc = this.audioContext.createOscillator();
-        const gain = this.audioContext.createGain();
+        // Create short burst of filtered noise (soft card swoosh)
+        const bufferSize = this.audioContext.sampleRate * 0.08; // 80ms
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const data = buffer.getChannelData(0);
 
-        osc.connect(gain);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.3;
+        }
+
+        const noise = this.audioContext.createBufferSource();
+        noise.buffer = buffer;
+
+        // Low-pass filter for soft swoosh
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 2000;
+
+        const gain = this.audioContext.createGain();
+        gain.gain.setValueAtTime(0.06, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.08);
+
+        noise.connect(filter);
+        filter.connect(gain);
         gain.connect(this.audioContext.destination);
 
-        osc.frequency.value = 600; // Lower frequency, softer
-        osc.type = 'sine';
-
-        gain.gain.setValueAtTime(0.05, this.audioContext.currentTime); // Much softer volume
-        gain.gain.exponentialRampToValueAtTime(0.005, this.audioContext.currentTime + 0.06);
-
-        osc.start(this.audioContext.currentTime);
-        osc.stop(this.audioContext.currentTime + 0.06);
+        noise.start();
     }
 
-    // Play a soft but audible sound when opponent plays a card
+    // Play a soft shuffle sound when opponent plays a card
     playOpponentCard() {
         if (!this.enabled || !this.audioContext) return;
         this.resume();
 
-        const osc = this.audioContext.createOscillator();
-        const gain = this.audioContext.createGain();
+        // Create short burst of filtered noise (soft card swoosh)
+        const bufferSize = this.audioContext.sampleRate * 0.1; // 100ms
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const data = buffer.getChannelData(0);
 
-        osc.connect(gain);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * 0.25;
+        }
+
+        const noise = this.audioContext.createBufferSource();
+        noise.buffer = buffer;
+
+        // Low-pass filter for soft swoosh
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1800;
+
+        const gain = this.audioContext.createGain();
+        gain.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+
+        noise.connect(filter);
+        filter.connect(gain);
         gain.connect(this.audioContext.destination);
 
-        osc.frequency.value = 500;
-        osc.type = 'sine';
-
-        gain.gain.setValueAtTime(0.08, this.audioContext.currentTime); // Audible but not loud
-        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.08);
-
-        osc.start(this.audioContext.currentTime);
-        osc.stop(this.audioContext.currentTime + 0.08);
+        noise.start();
     }
 
     // Play sound when logo fades (gentle chime)
