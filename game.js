@@ -118,7 +118,7 @@ class SoundManager {
         osc.stop(this.audioContext.currentTime + 0.06);
     }
 
-    // Play an even softer sound when opponent plays a card
+    // Play a soft but audible sound when opponent plays a card
     playOpponentCard() {
         if (!this.enabled || !this.audioContext) return;
         this.resume();
@@ -129,14 +129,14 @@ class SoundManager {
         osc.connect(gain);
         gain.connect(this.audioContext.destination);
 
-        osc.frequency.value = 500; // Even lower frequency
+        osc.frequency.value = 500;
         osc.type = 'sine';
 
-        gain.gain.setValueAtTime(0.025, this.audioContext.currentTime); // Very soft
-        gain.gain.exponentialRampToValueAtTime(0.003, this.audioContext.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.08, this.audioContext.currentTime); // Audible but not loud
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.08);
 
         osc.start(this.audioContext.currentTime);
-        osc.stop(this.audioContext.currentTime + 0.05);
+        osc.stop(this.audioContext.currentTime + 0.08);
     }
 
     // Play sound when logo fades (gentle chime)
@@ -335,18 +335,19 @@ class SoundManager {
         });
     }
 
-    // Play "Watch out!" alert sound (quick warning beeps)
+    // Play "Watch out!" alert sound - dramatic soap opera sting "dun dun duuuuun"
     playWatchOut() {
         if (!this.enabled || !this.audioContext) return;
         this.resume();
 
-        // Two quick alert beeps - rising then falling
-        const beeps = [
-            { freq: 880, time: 0 },      // A5
-            { freq: 1100, time: 0.1 }    // C#6 (higher)
+        // Dramatic descending sting: dun, dun, duuuuun (like soap opera reveal)
+        const notes = [
+            { freq: 440, time: 0, duration: 0.2 },        // A4 - "dun"
+            { freq: 392, time: 0.25, duration: 0.2 },     // G4 - "dun"
+            { freq: 261.63, time: 0.5, duration: 0.8 }    // C4 - "duuuuun" (longer, lower)
         ];
 
-        beeps.forEach(({ freq, time }) => {
+        notes.forEach(({ freq, time, duration }) => {
             const osc = this.audioContext.createOscillator();
             const gain = this.audioContext.createGain();
 
@@ -354,14 +355,18 @@ class SoundManager {
             gain.connect(this.audioContext.destination);
 
             osc.frequency.value = freq;
-            osc.type = 'square';
+            osc.type = 'sine'; // Smooth, dramatic tone
 
             const startTime = this.audioContext.currentTime + time;
-            gain.gain.setValueAtTime(0.08, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.08);
+
+            // Attack and sustain
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+            // Fade out over the duration
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
 
             osc.start(startTime);
-            osc.stop(startTime + 0.08);
+            osc.stop(startTime + duration);
         });
     }
 
@@ -1845,7 +1850,7 @@ class MultiplayerManager {
             await database.ref(`games/${this.lastGameId}/rematchGameId`).set(this.currentGameId);
         }
 
-        this.game.startMultiplayerGame(this.currentGameId, true);
+        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true);
         this.startGameListeners();
     }
 
@@ -1866,7 +1871,7 @@ class MultiplayerManager {
                     const gameData = gameSnapshot.val();
 
                     if (gameData) {
-                        this.game.startMultiplayerGame(newGameId, false, gameData);
+                        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
                         this.startGameListeners();
                     }
                     resolve();
@@ -1941,7 +1946,6 @@ class PushGame {
             pileCount: 3,
             jackOnJack: true,
             skillLevel: 'expert',  // 'kid', 'fun', 'expert'
-            hintsAndTips: true,    // Show fun hints during special moments
             soundEffects: true     // Play sound effects
         };
 
@@ -1963,9 +1967,6 @@ class PushGame {
 
         // For Expert mode status display
         this.lastExpertRule = '';
-
-        // For hints system
-        this.poisonHintShown = false;
 
         this.playerDeck = [];
         this.opponentDeck = [];
@@ -2279,7 +2280,6 @@ class PushGame {
         this.currentCard = null;
         this.gameActive = true;
         this.currentTurnPlayer = isHost ? 'player' : 'opponent';
-        this.poisonHintShown = false;
 
         // Close all modals
         document.getElementById('mode-modal').classList.remove('show');
@@ -2501,7 +2501,6 @@ class PushGame {
         const pileCountSelect = document.getElementById('pile-count');
         const jackOnJackToggle = document.getElementById('jack-on-jack');
         const skillLevelSelect = document.getElementById('skill-level');
-        const hintsToggle = document.getElementById('hints-and-tips');
         const soundToggle = document.getElementById('sound-effects');
 
         if (pileCountSelect) {
@@ -2512,9 +2511,6 @@ class PushGame {
         }
         if (skillLevelSelect) {
             skillLevelSelect.value = this.settings.skillLevel;
-        }
-        if (hintsToggle) {
-            hintsToggle.checked = this.settings.hintsAndTips;
         }
         if (soundToggle) {
             soundToggle.checked = this.settings.soundEffects;
@@ -2808,11 +2804,6 @@ class PushGame {
             this.saveSettings();
         });
 
-        document.getElementById('hints-and-tips').addEventListener('change', (e) => {
-            this.settings.hintsAndTips = e.target.checked;
-            this.saveSettings();
-        });
-
         document.getElementById('sound-effects').addEventListener('change', (e) => {
             this.settings.soundEffects = e.target.checked;
             soundManager.enabled = this.settings.soundEffects;
@@ -2917,7 +2908,6 @@ class PushGame {
         this.isPlayerTurn = true;
         this.currentTurnPlayer = 'player';
         this.gameActive = true;
-        this.poisonHintShown = false;
 
         // Render piles HTML based on pile count
         this.renderPilesHTML();
@@ -3089,11 +3079,6 @@ class PushGame {
 
         // Switch turns - strictly alternate
         this.switchTurn();
-
-        // Check for hints AFTER turn switches (so we warn the player whose turn it now is)
-        if (this.checkAllPilesAtTwoToPush()) {
-            this.showWatchOutHint();
-        }
     }
 
     animateCardToPlay(card, pileIndex, fromWho, callback) {
@@ -3322,29 +3307,35 @@ class PushGame {
         });
 
         if ((!this.isSpecialCard(card) && allPilesHave2) || jackOnNumber) {
-            // Find pile with lowest score
-            let lowestPile = validPiles[0];
-            let lowestScore = Infinity;
-            for (const i of validPiles) {
-                // For Jack, prefer piles with number cards on top
-                if (card.rank === 'J') {
+            // For Jack: pick pile with SMALLEST card count (minimize damage if opponent plays number)
+            // For number cards on all-piles-at-2: pick lowest-scoring pile
+            if (card.rank === 'J') {
+                let smallestPile = validPiles[0];
+                let smallestCount = Infinity;
+                for (const i of validPiles) {
                     const pile = this.piles[i];
+                    // Only consider piles with number cards on top (valid Jack targets)
                     if (pile.length > 0 && !this.isSpecialCard(pile[pile.length - 1])) {
-                        const score = this.calculatePileScore(i);
-                        if (score < lowestScore) {
-                            lowestScore = score;
-                            lowestPile = i;
+                        if (pile.length < smallestCount) {
+                            smallestCount = pile.length;
+                            smallestPile = i;
                         }
                     }
-                } else {
+                }
+                return { pile: smallestPile, rule: 'Rule #3 | Condition: Jack on number | Action: Play on smallest pile to minimize potential loss' };
+            } else {
+                // For number cards: find pile with lowest score
+                let lowestPile = validPiles[0];
+                let lowestScore = Infinity;
+                for (const i of validPiles) {
                     const score = this.calculatePileScore(i);
                     if (score < lowestScore) {
                         lowestScore = score;
                         lowestPile = i;
                     }
                 }
+                return { pile: lowestPile, rule: 'Rule #3 | Condition: All piles at 2 | Action: Play on lowest-scoring pile' };
             }
-            return { pile: lowestPile, rule: 'Rule #3 | Condition: All piles at 2 OR Jack on number | Action: Play on lowest-scoring pile' };
         }
 
         // Rule 4: Number card - favor safe piles, then large piles
@@ -3583,69 +3574,6 @@ class PushGame {
         }, 1500);
     }
 
-    // Check if all piles are at "2 to push" and player should be warned
-    checkAllPilesAtTwoToPush() {
-        if (!this.settings.hintsAndTips) return false;
-
-        // Only show to the player whose turn it is
-        const isMyTurn = this.isMultiplayerGame ? this.isMyTurn : this.isPlayerTurn;
-        if (!isMyTurn) return false;
-
-        // Only show if the player does NOT have a special card
-        if (this.currentCard && this.isSpecialCard(this.currentCard)) return false;
-
-        const pileCount = this.settings.pileCount;
-        let pilesAtTwo = 0;
-        let activePiles = 0;
-
-        for (let i = 0; i < pileCount; i++) {
-            const pileState = this.pileStates[i];
-            if (pileState) {
-                activePiles++;
-                const remaining = pileState.targetCount - pileState.count;
-                if (remaining === 2) {
-                    pilesAtTwo++;
-                }
-            }
-        }
-
-        // All piles must be active AND all at exactly 2 to push
-        return activePiles === pileCount && pilesAtTwo === pileCount;
-    }
-
-    // Show "Watch out!" hint with slam effect
-    showWatchOutHint() {
-        // Prevent showing multiple times in a row
-        if (this.poisonHintShown) return;
-        this.poisonHintShown = true;
-
-        // Create container
-        const container = document.createElement('div');
-        container.className = 'watchout-hint-container';
-
-        // Create slam burst lines
-        for (let i = 0; i < 12; i++) {
-            const line = document.createElement('div');
-            line.className = 'slam-line';
-            line.style.transform = `rotate(${i * 30}deg)`;
-            container.appendChild(line);
-        }
-
-        // Create text
-        const text = document.createElement('div');
-        text.className = 'watchout-hint-text';
-        text.textContent = 'Watch out!';
-        container.appendChild(text);
-
-        document.body.appendChild(container);
-
-        // Remove after animation
-        setTimeout(() => {
-            container.remove();
-            this.poisonHintShown = false;
-        }, 2000);
-    }
-
     animatePileTake(pileIndex, toPlayer, playerJustPlayed) {
         const pile = this.piles[pileIndex];
         const pileEl = document.getElementById(`pile-${pileIndex}`);
@@ -3807,8 +3735,7 @@ class PushGame {
                 // Show pile state info (always include card count)
                 if (pileState) {
                     const remaining = pileState.targetCount - pileState.count;
-                    const owner = pileState.playedBy === 'player' ? 'Your' : "Opponent's";
-                    infoContainer.innerHTML = `${pile.length} cards<br>${owner} ${pileState.specialCard}: ${remaining} to push`;
+                    infoContainer.innerHTML = `${pile.length} cards<br>${remaining} to push`;
                 } else {
                     infoContainer.textContent = `${pile.length} cards`;
                 }
