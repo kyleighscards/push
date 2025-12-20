@@ -1983,3 +1983,135 @@ header h1 {
         transform-origin: center 80px;
     }
 }
+
+/* ===== LANDSCAPE ORIENTATION BLOCKER ===== */
+/* Show rotate overlay when in landscape on small screens */
+.rotate-device-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a5f2a 0%, #0d3318 100%);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+}
+
+.rotate-device-overlay .rotate-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    animation: rotatePhone 2s ease-in-out infinite;
+}
+
+@keyframes rotatePhone {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-15deg); }
+    75% { transform: rotate(15deg); }
+}
+
+.rotate-device-overlay h2 {
+    color: var(--gold);
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.rotate-device-overlay p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    max-width: 300px;
+}
+
+/* Show overlay on landscape orientation when height is too small for the game */
+@media (orientation: landscape) and (max-height: 500px) {
+    .rotate-device-overlay {
+        display: flex;
+    }
+
+    .game-container {
+        display: none;
+    }
+}
+
+/* ===== YOUR MOVE! IDLE NOTICE ===== */
+
+.yourmove-notice {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.yourmove-text {
+    font-family: 'Arial Black', 'Impact', sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    white-space: nowrap;
+}
+
+/* Gentle stage - soft wave animation */
+.yourmove-notice.gentle .yourmove-text {
+    font-size: 2.5rem;
+    color: #3498db;
+    text-shadow:
+        2px 2px 0 #fff,
+        -1px -1px 0 rgba(0,0,0,0.2),
+        0 0 15px rgba(52, 152, 219, 0.5);
+    animation: gentleWave 2s ease-in-out infinite;
+}
+
+@keyframes gentleWave {
+    0%, 100% {
+        transform: translateY(0) rotate(-2deg);
+        opacity: 0.9;
+    }
+    50% {
+        transform: translateY(-8px) rotate(2deg);
+        opacity: 1;
+    }
+}
+
+/* Urgent stage - more prominent, pulsing animation */
+.yourmove-notice.urgent .yourmove-text {
+    font-size: 3.5rem;
+    color: #e74c3c;
+    text-shadow:
+        3px 3px 0 #f1c40f,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000,
+        0 0 20px rgba(231, 76, 60, 0.8),
+        0 0 40px rgba(231, 76, 60, 0.5);
+    animation: urgentPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+    0%, 100% {
+        transform: scale(1) rotate(-1deg);
+    }
+    50% {
+        transform: scale(1.1) rotate(1deg);
+    }
+}
+
+/* Responsive sizing */
+@media (max-width: 600px) {
+    .yourmove-notice.gentle .yourmove-text {
+        font-size: 1.8rem;
+        letter-spacing: 2px;
+    }
+    .yourmove-notice.urgent .yourmove-text {
+        font-size: 2.5rem;
+        letter-spacing: 2px;
+    }
+}

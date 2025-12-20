@@ -53,9 +53,26 @@ class SoundManager {
         this.audioContext = null;
         this.enabled = true;
         this.initialized = false;
+        this.unlocked = false;
+
+        // Set up user gesture listeners to unlock audio on iOS
+        this.setupUnlockListeners();
     }
 
-    // Initialize audio context on first user interaction
+    // Set up listeners for user gestures to unlock iOS audio
+    setupUnlockListeners() {
+        const unlockAudio = () => {
+            this.init();
+            this.unlock();
+        };
+
+        // Listen for any user interaction
+        ['touchstart', 'touchend', 'click', 'keydown'].forEach(event => {
+            document.addEventListener(event, unlockAudio, { once: false, passive: true });
+        });
+    }
+
+    // Initialize audio context
     init() {
         if (this.initialized) return;
         try {
@@ -67,17 +84,68 @@ class SoundManager {
         }
     }
 
+    // Unlock audio on iOS by playing a silent buffer
+    async unlock() {
+        if (this.unlocked || !this.audioContext) return;
+
+        try {
+            // Resume context if suspended
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            // Play a silent buffer to fully unlock on iOS
+            const buffer = this.audioContext.createBuffer(1, 1, 22050);
+            const source = this.audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.audioContext.destination);
+            source.start(0);
+
+            this.unlocked = true;
+        } catch (e) {
+            console.log('Audio unlock failed:', e);
+        }
+    }
+
     // Resume audio context if suspended (browser autoplay policy)
     async resume() {
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-            await this.audioContext.resume();
+        if (!this.audioContext) {
+            this.init();
         }
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            try {
+                await this.audioContext.resume();
+            } catch (e) {
+                console.log('Audio resume failed:', e);
+            }
+        }
+    }
+
+    // Check if audio is ready to play
+    isReady() {
+        return this.enabled && this.audioContext && this.audioContext.state === 'running';
+    }
+
+    // Ensure audio is ready before playing (for iOS)
+    ensureReady() {
+        if (!this.enabled) return false;
+        if (!this.audioContext) {
+            this.init();
+        }
+        if (!this.audioContext) return false;
+
+        // Try to resume if suspended
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume().catch(() => {});
+            // On iOS, if still suspended, audio won't play - that's ok, next tap will unlock
+            return this.audioContext.state === 'running';
+        }
+        return true;
     }
 
     // Play a click/tap sound for UI interactions
     playClick() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         const osc = this.audioContext.createOscillator();
         const gain = this.audioContext.createGain();
@@ -89,8 +157,6 @@ class SoundManager {
         osc.type = 'sine';
 
         gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-        gain.gain.exponentialDecayTo = 0.01;
-        gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
 
         osc.start(this.audioContext.currentTime);
@@ -99,8 +165,7 @@ class SoundManager {
 
     // Play a soft shuffle sound when player plays a card
     playCardPlay() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Create short burst of filtered noise (soft card swoosh)
         const bufferSize = this.audioContext.sampleRate * 0.08; // 80ms
@@ -132,8 +197,7 @@ class SoundManager {
 
     // Play a soft shuffle sound when opponent plays a card
     playOpponentCard() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Create short burst of filtered noise (soft card swoosh)
         const bufferSize = this.audioContext.sampleRate * 0.1; // 100ms
@@ -165,8 +229,7 @@ class SoundManager {
 
     // Play sound when logo fades (gentle chime)
     playLogoFade() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 chord
         notes.forEach((freq, i) => {
@@ -191,8 +254,7 @@ class SoundManager {
 
     // Play sound for "Jacked!" moment (dramatic horn-like)
     playJacked() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Dramatic descending tones
         const notes = [440, 349.23, 293.66]; // A4, F4, D4
@@ -217,8 +279,7 @@ class SoundManager {
 
     // Play sound for Push! moment (exciting fanfare)
     playPush() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Ascending triumphant notes
         const notes = [392, 493.88, 587.33, 783.99]; // G4, B4, D5, G5
@@ -243,8 +304,7 @@ class SoundManager {
 
     // Play card shuffle sound (for cards being pushed)
     playShuffle() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Create noise-based shuffle sound
         const bufferSize = this.audioContext.sampleRate * 0.25; // 0.25 seconds (shorter)
@@ -277,8 +337,7 @@ class SoundManager {
 
     // Play individual card sound (for card-by-card animation)
     playCardFlip() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Short percussive click
         const bufferSize = this.audioContext.sampleRate * 0.05;
@@ -309,66 +368,17 @@ class SoundManager {
 
     // Play win sound (celebratory)
     playWin() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
-        // Happy ascending arpeggio
-        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-        notes.forEach((freq, i) => {
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
-
-            osc.connect(gain);
-            gain.connect(this.audioContext.destination);
-
-            osc.frequency.value = freq;
-            osc.type = 'triangle';
-
-            const startTime = this.audioContext.currentTime + i * 0.12;
-            gain.gain.setValueAtTime(0.12, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
-
-            osc.start(startTime);
-            osc.stop(startTime + 0.4);
-        });
-    }
-
-    // Play lose sound (sad trombone style)
-    playLose() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
-
-        // Descending sad notes
-        const notes = [293.66, 277.18, 261.63, 246.94]; // D4, C#4, C4, B3
-        notes.forEach((freq, i) => {
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
-
-            osc.connect(gain);
-            gain.connect(this.audioContext.destination);
-
-            osc.frequency.value = freq;
-            osc.type = 'triangle';
-
-            const startTime = this.audioContext.currentTime + i * 0.3;
-            gain.gain.setValueAtTime(0.1, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
-
-            osc.start(startTime);
-            osc.stop(startTime + 0.5);
-        });
-    }
-
-    // Play "Watch out!" alert sound - dramatic soap opera sting "dun dun duuuuun"
-    playWatchOut() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
-
-        // Dramatic descending sting: dun, dun, duuuuun (like soap opera reveal)
+        // Triumphant fanfare: "di di da-di da diiii!"
+        const now = this.audioContext.currentTime;
         const notes = [
-            { freq: 440, time: 0, duration: 0.2 },        // A4 - "dun"
-            { freq: 392, time: 0.25, duration: 0.2 },     // G4 - "dun"
-            { freq: 261.63, time: 0.5, duration: 0.8 }    // C4 - "duuuuun" (longer, lower)
+            { freq: 523.25, time: 0, duration: 0.1 },       // C5 - "di"
+            { freq: 523.25, time: 0.12, duration: 0.1 },    // C5 - "di"
+            { freq: 783.99, time: 0.28, duration: 0.12 },   // G5 - "da"
+            { freq: 659.25, time: 0.42, duration: 0.08 },   // E5 - "di"
+            { freq: 783.99, time: 0.55, duration: 0.15 },   // G5 - "da"
+            { freq: 1046.5, time: 0.75, duration: 0.6 }     // C6 - "diiii!" (long triumphant finish)
         ];
 
         notes.forEach(({ freq, time, duration }) => {
@@ -379,14 +389,80 @@ class SoundManager {
             gain.connect(this.audioContext.destination);
 
             osc.frequency.value = freq;
-            osc.type = 'sine'; // Smooth, dramatic tone
+            osc.type = 'square'; // Brassy, trumpet-like
 
-            const startTime = this.audioContext.currentTime + time;
-
-            // Attack and sustain
+            const startTime = now + time;
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
-            // Fade out over the duration
+            gain.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
+            gain.gain.setValueAtTime(0.1, startTime + duration * 0.7);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+
+            // Add harmonic for richer brass sound
+            const harm = this.audioContext.createOscillator();
+            const harmGain = this.audioContext.createGain();
+            harm.connect(harmGain);
+            harmGain.connect(this.audioContext.destination);
+            harm.frequency.value = freq * 2; // Octave up
+            harm.type = 'sine';
+            harmGain.gain.setValueAtTime(0, startTime);
+            harmGain.gain.linearRampToValueAtTime(0.03, startTime + 0.02);
+            harmGain.gain.exponentialRampToValueAtTime(0.01, startTime + duration * 0.8);
+            harm.start(startTime);
+            harm.stop(startTime + duration);
+        });
+    }
+
+    // Play lose sound (sad trombone with wah-wah muted effect)
+    playLose() {
+        if (!this.ensureReady()) return;
+
+        // Sad trombone: "mwah mwah mwaaaaaaah" with plunger-mute wobble
+        const now = this.audioContext.currentTime;
+        const notes = [
+            { freq: 311.13, time: 0, duration: 0.35 },      // Eb4 - "mwah"
+            { freq: 293.66, time: 0.4, duration: 0.35 },    // D4 - "mwah"
+            { freq: 233.08, time: 0.85, duration: 1.2 }     // Bb3 - "mwaaaaaaah" (long sad finish)
+        ];
+
+        notes.forEach(({ freq, time, duration }, index) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.frequency.value = freq;
+            osc.type = 'sawtooth'; // Brassy trombone
+
+            // Wah-wah filter effect (plunger mute)
+            filter.type = 'lowpass';
+            filter.Q.value = 5;
+
+            const startTime = now + time;
+
+            // Wobble the filter for "wah" effect
+            if (index < 2) {
+                // Short notes: quick wah
+                filter.frequency.setValueAtTime(800, startTime);
+                filter.frequency.linearRampToValueAtTime(300, startTime + duration * 0.5);
+                filter.frequency.linearRampToValueAtTime(600, startTime + duration);
+            } else {
+                // Long note: slow descending wah
+                filter.frequency.setValueAtTime(900, startTime);
+                filter.frequency.linearRampToValueAtTime(200, startTime + duration);
+                // Also slide the pitch down for extra sadness
+                osc.frequency.setValueAtTime(freq, startTime);
+                osc.frequency.linearRampToValueAtTime(freq * 0.9, startTime + duration);
+            }
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.12, startTime + 0.03);
+            gain.gain.setValueAtTime(0.12, startTime + duration * 0.6);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
 
             osc.start(startTime);
@@ -394,10 +470,68 @@ class SoundManager {
         });
     }
 
+    // Play "Watch out!" alert sound - dramatic soap opera sting "dun dun duuuuun"
+    playWatchOut() {
+        if (!this.ensureReady()) return;
+
+        // Menacing horror-style sting with deep bass and dissonance
+        const now = this.audioContext.currentTime;
+
+        // Deep rumbling bass drone (ominous foundation)
+        const bass = this.audioContext.createOscillator();
+        const bassGain = this.audioContext.createGain();
+        bass.connect(bassGain);
+        bassGain.connect(this.audioContext.destination);
+        bass.frequency.value = 55; // Very low A1
+        bass.type = 'sawtooth';
+        bassGain.gain.setValueAtTime(0, now);
+        bassGain.gain.linearRampToValueAtTime(0.12, now + 0.1);
+        bassGain.gain.linearRampToValueAtTime(0.08, now + 1.0);
+        bassGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+        bass.start(now);
+        bass.stop(now + 1.5);
+
+        // Menacing descending notes (minor key, tritone for tension)
+        const notes = [
+            { freq: 311.13, time: 0, duration: 0.25 },     // Eb4 - first hit
+            { freq: 277.18, time: 0.3, duration: 0.25 },   // Db4 - second hit (descending)
+            { freq: 164.81, time: 0.6, duration: 0.9 }     // E3 - deep final doom note
+        ];
+
+        notes.forEach(({ freq, time, duration }) => {
+            // Main tone
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sawtooth'; // Harsher, more menacing
+
+            const startTime = now + time;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.12, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+
+            // Add dissonant minor second above for extra menace
+            const dissonant = this.audioContext.createOscillator();
+            const disGain = this.audioContext.createGain();
+            dissonant.connect(disGain);
+            disGain.connect(this.audioContext.destination);
+            dissonant.frequency.value = freq * 1.059; // Minor 2nd interval (very dissonant)
+            dissonant.type = 'sine';
+            disGain.gain.setValueAtTime(0, startTime);
+            disGain.gain.linearRampToValueAtTime(0.04, startTime + 0.02);
+            disGain.gain.exponentialRampToValueAtTime(0.01, startTime + duration * 0.7);
+            dissonant.start(startTime);
+            dissonant.stop(startTime + duration);
+        });
+    }
+
     // Play invitation received sound (obvious doorbell-like chime)
     playInvite() {
-        if (!this.enabled || !this.audioContext) return;
-        this.resume();
+        if (!this.ensureReady()) return;
 
         // Doorbell-style ding-dong, repeated twice for attention
         const notes = [
@@ -423,6 +557,63 @@ class SoundManager {
 
             osc.start(startTime);
             osc.stop(startTime + 0.2);
+        });
+    }
+
+    // Play gentle nudge sound (soft beep-beep for first idle warning)
+    playGentleNudge() {
+        if (!this.ensureReady()) return;
+
+        // Soft, friendly double beep
+        const beeps = [
+            { time: 0, freq: 880 },     // A5
+            { time: 0.15, freq: 880 }   // A5 again
+        ];
+
+        beeps.forEach(({ time, freq }) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+
+            const startTime = this.audioContext.currentTime + time;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.08, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.12);
+        });
+    }
+
+    // Play urgent nudge sound (louder, more insistent beep-beep)
+    playUrgentNudge() {
+        if (!this.ensureReady()) return;
+
+        // Louder, more insistent triple beep
+        const beeps = [
+            { time: 0, freq: 1047 },      // C6
+            { time: 0.12, freq: 1047 },   // C6
+            { time: 0.24, freq: 1319 }    // E6 (rising for urgency)
+        ];
+
+        beeps.forEach(({ time, freq }) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'square'; // Harsher, more attention-grabbing
+
+            const startTime = this.audioContext.currentTime + time;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.12, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.12);
         });
     }
 }
@@ -2013,6 +2204,11 @@ class PushGame {
         this.isMultiplayerGame = false;
         this.isMyTurn = true;
 
+        // Idle timer state (for multiplayer)
+        this.idleTimer = null;
+        this.idleStage = 0; // 0 = no warning, 1 = gentle, 2 = urgent, 3 = auto-play
+        this.yourMoveElement = null;
+
         this.loadSettings();
         this.loadTheme();
         this.initializeEventListeners();
@@ -2287,6 +2483,9 @@ class PushGame {
     }
 
     startMultiplayerGame(myDeck, opponentName, isHost) {
+        // Clear any idle timer from previous game
+        this.clearIdleTimer();
+
         this.isMultiplayerGame = true;
         this.isMyTurn = isHost; // Host (player1) goes first
         this.isPlayerTurn = isHost; // Also set isPlayerTurn for consistency
@@ -2327,6 +2526,7 @@ class PushGame {
 
         if (this.isMyTurn) {
             this.drawCard();
+            this.startIdleTimer(); // Start idle timer if I go first
         }
     }
 
@@ -2918,6 +3118,9 @@ class PushGame {
         // Hide win modal if showing
         document.getElementById('win-modal').classList.remove('show');
 
+        // Clear any idle timer from previous game
+        this.clearIdleTimer();
+
         // Reload settings from localStorage to ensure we have the latest
         this.loadSettings();
 
@@ -3469,6 +3672,7 @@ class PushGame {
     checkWinCondition() {
         if (this.playerDeck.length === 0 && !this.currentCard) {
             this.gameActive = false;
+            this.clearIdleTimer(); // Clear idle timer on game end
             if (this.isMultiplayerGame) {
                 // In multiplayer, show win locally AND notify Firebase
                 this.handleMultiplayerWin(true);
@@ -3480,6 +3684,7 @@ class PushGame {
         }
         if (this.opponentDeck.length === 0) {
             this.gameActive = false;
+            this.clearIdleTimer(); // Clear idle timer on game end
             if (this.isMultiplayerGame) {
                 // In multiplayer, show loss locally AND notify Firebase
                 this.handleMultiplayerWin(false);
@@ -3672,6 +3877,117 @@ class PushGame {
         }, 2000);
     }
 
+    // Start idle timer for multiplayer games (when it's the player's turn)
+    startIdleTimer() {
+        this.clearIdleTimer();
+        this.idleStage = 0;
+
+        // Only for multiplayer games when it's my turn
+        if (!this.isMultiplayerGame || !this.isMyTurn) {
+            console.log('Idle timer NOT started:', { isMultiplayerGame: this.isMultiplayerGame, isMyTurn: this.isMyTurn });
+            return;
+        }
+
+        console.log('Idle timer STARTED - 10 seconds until first warning');
+        this.idleTimer = setTimeout(() => this.handleIdleStage(1), 10000);
+    }
+
+    // Clear any active idle timer
+    clearIdleTimer() {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+        this.idleStage = 0;
+        this.hideYourMoveNotice();
+    }
+
+    // Handle escalating idle stages
+    handleIdleStage(stage) {
+        console.log('handleIdleStage called with stage:', stage, {
+            isMultiplayerGame: this.isMultiplayerGame,
+            isMyTurn: this.isMyTurn,
+            gameActive: this.gameActive
+        });
+
+        // Make sure it's still my turn and game is active
+        if (!this.isMultiplayerGame || !this.isMyTurn || !this.gameActive) {
+            console.log('Idle stage aborted - conditions not met');
+            this.clearIdleTimer();
+            return;
+        }
+
+        this.idleStage = stage;
+
+        if (stage === 1) {
+            // First warning: gentle beep and soft notice
+            console.log('Stage 1: Showing gentle warning');
+            soundManager.playGentleNudge();
+            this.showYourMoveNotice('gentle');
+            this.idleTimer = setTimeout(() => this.handleIdleStage(2), 10000);
+        } else if (stage === 2) {
+            // Second warning: louder beep and prominent notice
+            console.log('Stage 2: Showing urgent warning');
+            soundManager.playUrgentNudge();
+            this.showYourMoveNotice('urgent');
+            this.idleTimer = setTimeout(() => this.handleIdleStage(3), 10000);
+        } else if (stage === 3) {
+            // Auto-play: pick a random valid pile
+            console.log('Stage 3: Auto-playing card');
+            this.hideYourMoveNotice();
+            this.autoPlayCard();
+        }
+    }
+
+    // Show "Your Move!" notice with appropriate style
+    showYourMoveNotice(style) {
+        // Remove existing notice if any
+        this.hideYourMoveNotice();
+
+        const container = document.createElement('div');
+        container.className = `yourmove-notice ${style}`;
+        container.id = 'yourmove-notice';
+
+        const text = document.createElement('div');
+        text.className = 'yourmove-text';
+        text.textContent = 'Your move!';
+        container.appendChild(text);
+
+        document.body.appendChild(container);
+        this.yourMoveElement = container;
+    }
+
+    // Hide "Your Move!" notice
+    hideYourMoveNotice() {
+        if (this.yourMoveElement) {
+            this.yourMoveElement.remove();
+            this.yourMoveElement = null;
+        }
+        // Also remove by ID in case reference was lost
+        const existing = document.getElementById('yourmove-notice');
+        if (existing) existing.remove();
+    }
+
+    // Auto-play the current card on a random valid pile
+    autoPlayCard() {
+        if (!this.currentCard || !this.isMyTurn) return;
+
+        // Find valid piles (non-null pileStates or empty piles)
+        const validPiles = [];
+        for (let i = 0; i < this.settings.pileCount; i++) {
+            // Can always play on any pile
+            validPiles.push(i);
+        }
+
+        if (validPiles.length === 0) return;
+
+        // Pick a random pile
+        const randomPile = validPiles[Math.floor(Math.random() * validPiles.length)];
+
+        // Play the card
+        this.playCardOnPile(randomPile);
+    }
+
     animatePileTake(pileIndex, toPlayer, playerJustPlayed) {
         const pile = this.piles[pileIndex];
         const pileEl = document.getElementById(`pile-${pileIndex}`);
@@ -3749,6 +4065,7 @@ class PushGame {
                 this.currentTurnPlayer = 'opponent';
                 this.isMyTurn = false;
                 this.isPlayerTurn = false;
+                this.clearIdleTimer(); // Clear idle timer when my turn ends
                 const oppName = this.multiplayer.opponentUsername || 'Opponent';
                 this.setStatus(this.messages.opponentTurn.replace('{name}', oppName));
                 // Don't call opponentTurn() - wait for Firebase update
@@ -3758,7 +4075,10 @@ class PushGame {
                 this.isMyTurn = true;
                 this.isPlayerTurn = true;
                 this.setStatus(this.messages.yourTurn);
-                setTimeout(() => this.drawCard(), 300);
+                setTimeout(() => {
+                    this.drawCard();
+                    this.startIdleTimer(); // Start idle timer when my turn begins
+                }, 300);
             }
         } else {
             // AI mode - original logic
