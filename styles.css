@@ -185,6 +185,7 @@ header h1 {
     padding: 10px 20px;
     background: var(--game-info-bg);
     border-radius: 10px;
+    min-height: 64px;
 }
 
 .player-info {
@@ -210,10 +211,35 @@ header h1 {
     padding: 10px 20px;
     background: var(--status-bg);
     border-radius: 20px;
-    min-width: 200px;
-    max-width: 300px;
-    min-height: 1.5em;
+    min-width: 120px;
+    max-width: min(400px, calc(100vw - 260px));
+    height: 44px;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 1;
+}
+
+.status-message .status-text {
+    display: inline-block;
+}
+
+/* Scrolling marquee when text overflows */
+.status-message.scrolling {
+    justify-content: flex-start;
+}
+
+.status-message.scrolling .status-text {
+    animation: statusMarquee 4s ease-in-out infinite;
+}
+
+@keyframes statusMarquee {
+    0%, 20% { transform: translateX(0); }
+    50%, 70% { transform: translateX(var(--scroll-distance, -50px)); }
+    100% { transform: translateX(0); }
 }
 
 /* Game Board */
@@ -1366,6 +1392,7 @@ header h1 {
     .game-info {
         flex-direction: column;
         gap: 10px;
+        min-height: 120px;
     }
 
     .subtitle-row {
@@ -1389,8 +1416,10 @@ header h1 {
     }
 
     .status-message {
-        min-width: 150px;
+        min-width: 100px;
+        max-width: calc(100vw - 160px);
         font-size: 0.9rem;
+        height: 40px;
     }
 
     .card-rank {

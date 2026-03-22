@@ -3782,7 +3782,26 @@ class PushGame {
     }
 
     setStatus(message) {
-        document.getElementById('status').textContent = message;
+        const statusEl = document.getElementById('status');
+
+        // Reset state
+        statusEl.classList.remove('scrolling');
+        statusEl.innerHTML = '';
+
+        // Create text span
+        const textSpan = document.createElement('span');
+        textSpan.className = 'status-text';
+        textSpan.textContent = message;
+        statusEl.appendChild(textSpan);
+
+        // Check for overflow and enable scrolling if needed
+        requestAnimationFrame(() => {
+            const overflow = textSpan.scrollWidth - statusEl.clientWidth;
+            if (overflow > 0) {
+                statusEl.style.setProperty('--scroll-distance', `-${overflow + 10}px`);
+                statusEl.classList.add('scrolling');
+            }
+        });
     }
 
     showPushPopup(message = 'PUSH!') {
