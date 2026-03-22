@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push! - The Card Game Flyer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: letter;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Arial Black', 'Helvetica Bold', sans-serif;
+            background: linear-gradient(135deg, #1a5f2a 0%, #0d3318 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .flyer {
+            width: 8.5in;
+            height: 11in;
+            background: linear-gradient(135deg, #1a5f2a 0%, #0d3318 100%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 30px;
+            overflow: hidden;
+        }
+
+        /* Floating themed emojis */
+        .floating-emoji {
+            position: absolute;
+            font-size: 2.5rem;
+            opacity: 0.7;
+            animation: float 6s ease-in-out infinite;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-15px) rotate(5deg); }
+            75% { transform: translateY(10px) rotate(-5deg); }
+        }
+
+        /* Position each emoji */
+        .emoji-1 { top: 5%; left: 5%; animation-delay: 0s; }
+        .emoji-2 { top: 8%; right: 8%; animation-delay: 0.5s; }
+        .emoji-3 { top: 20%; left: 3%; animation-delay: 1s; }
+        .emoji-4 { top: 18%; right: 5%; animation-delay: 1.5s; }
+        .emoji-5 { top: 35%; left: 2%; animation-delay: 2s; }
+        .emoji-6 { top: 38%; right: 3%; animation-delay: 2.5s; }
+        .emoji-7 { top: 55%; left: 4%; animation-delay: 3s; }
+        .emoji-8 { top: 52%; right: 6%; animation-delay: 3.5s; }
+        .emoji-9 { top: 70%; left: 3%; animation-delay: 4s; }
+        .emoji-10 { top: 68%; right: 4%; animation-delay: 4.5s; }
+        .emoji-11 { top: 85%; left: 6%; animation-delay: 5s; }
+        .emoji-12 { top: 82%; right: 7%; animation-delay: 5.5s; }
+        .emoji-13 { top: 12%; left: 15%; animation-delay: 0.3s; font-size: 2rem; }
+        .emoji-14 { top: 15%; right: 18%; animation-delay: 0.8s; font-size: 2rem; }
+        .emoji-15 { top: 90%; left: 20%; animation-delay: 1.3s; font-size: 2rem; }
+        .emoji-16 { top: 88%; right: 22%; animation-delay: 1.8s; font-size: 2rem; }
+
+        /* Card decorations */
+        .card-deco {
+            position: absolute;
+            width: 60px;
+            height: 84px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            transform: rotate(var(--rotation));
+            opacity: 0.9;
+        }
+
+        .card-deco.hearts { color: #e74c3c; }
+        .card-deco.spades { color: #2c3e50; }
+        .card-deco.diamonds { color: #e74c3c; }
+        .card-deco.clubs { color: #2c3e50; }
+
+        .card-1 { top: 25%; left: 8%; --rotation: -15deg; }
+        .card-2 { top: 30%; right: 10%; --rotation: 20deg; }
+        .card-3 { bottom: 20%; left: 10%; --rotation: 10deg; }
+        .card-4 { bottom: 25%; right: 8%; --rotation: -12deg; }
+
+        /* Logo styling */
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 150px;
+            perspective: 500px;
+            margin-bottom: 20px;
+            z-index: 10;
+        }
+
+        .logo-letter, .logo-exclaim {
+            font-family: 'Arial Black', 'Helvetica Bold', sans-serif;
+            font-size: 7rem;
+            font-weight: 900;
+            display: inline-block;
+            color: #fff;
+            background: linear-gradient(180deg, #ffffff 0%, #f1c40f 30%, #e67e22 70%, #d35400 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+            transform-origin: bottom center;
+            transform: rotate(calc((var(--i) - 2) * 8deg));
+            margin: 0 -5px;
+            filter: drop-shadow(-6px 6px 4px rgba(0,0,0,0.5));
+            text-shadow:
+                -1px -1px 0 rgba(255,255,255,0.8),
+                3px 3px 0 rgba(0,0,0,0.2),
+                6px 6px 0 rgba(0,0,0,0.15),
+                9px 9px 0 rgba(0,0,0,0.1);
+            -webkit-text-stroke: 3px rgba(0,0,0,0.1);
+        }
+
+        .logo-exclaim {
+            font-size: 9rem;
+            background: linear-gradient(180deg, #ff6b6b 0%, #e74c3c 40%, #c0392b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transform: rotate(12deg) scale(1.2);
+            margin-left: 5px;
+            filter: drop-shadow(-5px 8px 5px rgba(0,0,0,0.6));
+        }
+
+        .tagline {
+            color: #f1c40f;
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.1rem;
+            font-weight: normal;
+            text-align: center;
+            margin-bottom: 30px;
+            z-index: 10;
+        }
+
+        /* QR Code section */
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 60px rgba(241, 196, 15, 0.3);
+            margin-bottom: 25px;
+        }
+
+        .qr-code {
+            width: 280px;
+            height: 280px;
+            display: block;
+        }
+
+        .or-divider {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.3rem;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            width: 60px;
+            height: 2px;
+            background: rgba(255,255,255,0.4);
+        }
+
+        .url {
+            background: rgba(255,255,255,0.15);
+            padding: 15px 40px;
+            border-radius: 30px;
+            color: #f1c40f;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            border: 2px solid rgba(241, 196, 15, 0.5);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Bottom section */
+        .bottom-section {
+            text-align: center;
+            z-index: 10;
+        }
+
+        .play-text {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .feature {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: normal;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .byline {
+            color: rgba(255,255,255,0.7);
+            font-size: 1rem;
+            font-weight: normal;
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        /* Sparkle effects */
+        .sparkle {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .sparkle-1 { top: 3%; left: 50%; animation-delay: 0s; }
+        .sparkle-2 { top: 45%; left: 12%; animation-delay: 0.7s; }
+        .sparkle-3 { top: 45%; right: 12%; animation-delay: 1.4s; }
+        .sparkle-4 { bottom: 8%; left: 35%; animation-delay: 0.3s; }
+        .sparkle-5 { bottom: 8%; right: 35%; animation-delay: 1s; }
+
+        /* Print styles */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .floating-emoji, .sparkle {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flyer">
+        <!-- Floating themed emojis from the game -->
+        <div class="floating-emoji emoji-1">🦄</div>
+        <div class="floating-emoji emoji-2">🚀</div>
+        <div class="floating-emoji emoji-3">🦈</div>
+        <div class="floating-emoji emoji-4">🎮</div>
+        <div class="floating-emoji emoji-5">🌸</div>
+        <div class="floating-emoji emoji-6">🤖</div>
+        <div class="floating-emoji emoji-7">🎸</div>
+        <div class="floating-emoji emoji-8">⚔️</div>
+        <div class="floating-emoji emoji-9">🐱</div>
+        <div class="floating-emoji emoji-10">🐶</div>
+        <div class="floating-emoji emoji-11">🎄</div>
+        <div class="floating-emoji emoji-12">🌴</div>
+        <div class="floating-emoji emoji-13">🍌</div>
+        <div class="floating-emoji emoji-14">💕</div>
+        <div class="floating-emoji emoji-15">🔬</div>
+        <div class="floating-emoji emoji-16">✈️</div>
+
+        <!-- Card decorations -->
+        <div class="card-deco hearts card-1">A♥</div>
+        <div class="card-deco spades card-2">K♠</div>
+        <div class="card-deco diamonds card-3">Q♦</div>
+        <div class="card-deco clubs card-4">J♣</div>
+
+        <!-- Sparkles -->
+        <div class="sparkle sparkle-1">✨</div>
+        <div class="sparkle sparkle-2">✨</div>
+        <div class="sparkle sparkle-3">✨</div>
+        <div class="sparkle sparkle-4">✨</div>
+        <div class="sparkle sparkle-5">✨</div>
+
+        <!-- Logo -->
+        <div>
+            <div class="logo-container">
+                <span class="logo-letter" style="--i: 0">P</span>
+                <span class="logo-letter" style="--i: 1">U</span>
+                <span class="logo-letter" style="--i: 2">S</span>
+                <span class="logo-letter" style="--i: 3">H</span>
+                <span class="logo-exclaim" style="--i: 4">!</span>
+            </div>
+            <div class="tagline">The Card Game</div>
+            <div class="subtitle">A fast-paced game of strategy and luck!</div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="qr-section">
+            <div class="qr-container">
+                <img src="PUSH_QR_CODE.png" alt="Scan to Play Push!" class="qr-code">
+            </div>
+            <div class="or-divider">- or -</div>
+            <div class="url">kyleighscards.github.io/push</div>
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="bottom-section">
+            <div class="play-text">Play Free in Your Browser!</div>
+            <div class="features">
+                <div class="feature">
+                    <span class="feature-icon">🤖</span>
+                    <span>vs Computer</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">👥</span>
+                    <span>vs Friends Online</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🎨</span>
+                    <span>40+ Themes</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">📱</span>
+                    <span>Works on Any Device</span>
+                </div>
+            </div>
+            <div class="byline">By Kyleigh's Cards</div>
+        </div>
+    </div>
+</body>
+</html>
