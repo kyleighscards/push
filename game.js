@@ -3819,7 +3819,8 @@ class PushGame {
         const letters = message.split('');
         letters.forEach((letter, i) => {
             const span = document.createElement('span');
-            span.className = letter === '!' ? 'push-exclaim' : 'push-letter';
+            // Use separate class for exclamation to get red gradient without conflicts
+            span.className = letter === '!' ? 'popup-exclaim-red' : 'push-letter';
             span.style.setProperty('--i', i);
             span.textContent = letter;
             popup.appendChild(span);
@@ -4237,6 +4238,30 @@ class PushGame {
 // Initialize game when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     window.game = new PushGame();
+
+    // Debug mode: show test buttons when ?debug=true is in URL
+    if (new URLSearchParams(window.location.search).get('debug') === 'true') {
+        const debugPanel = document.createElement('div');
+        debugPanel.className = 'debug-panel';
+        debugPanel.innerHTML = `
+            <div class="debug-title">Debug</div>
+            <button class="debug-btn" data-action="push">Push!</button>
+            <button class="debug-btn" data-action="jacked">Jacked!</button>
+            <button class="debug-btn" data-action="watchout">Watch Out!</button>
+        `;
+        document.body.appendChild(debugPanel);
+
+        debugPanel.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (action === 'push') {
+                window.game.showPushPopup('PUSH!');
+            } else if (action === 'jacked') {
+                window.game.showPushPopup('JACKED!');
+            } else if (action === 'watchout') {
+                window.game.showWatchOutHint();
+            }
+        });
+    }
 
     // Wait for multiplayer initialization to complete (Firebase connection)
     await window.game.multiplayer.waitForInit();

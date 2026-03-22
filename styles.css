@@ -1314,15 +1314,22 @@ header h1 {
     -webkit-text-stroke: 2px rgba(0,0,0,0.1);
 }
 
-.push-exclaim {
+/* Red exclamation point for popup - standalone class to avoid conflicts */
+.popup-exclaim-red {
+    font-family: 'Arial Black', 'Helvetica Bold', sans-serif;
     font-size: 6.5rem;
+    font-weight: 900;
+    display: inline-block;
+    position: relative;
+    transform-origin: bottom center;
+    transform: rotate(12deg) scale(1.2);
+    margin-left: 2px;
+    /* RED gradient - matches logo exclamation exactly */
     color: #e74c3c;
     background: linear-gradient(180deg, #ff6b6b 0%, #e74c3c 40%, #c0392b 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    transform: rotate(12deg) scale(1.2);
-    margin-left: 2px;
     filter: drop-shadow(-3px 6px 3px rgba(0,0,0,0.5));
 }
 
@@ -2143,4 +2150,56 @@ header h1 {
         font-size: 2.5rem;
         letter-spacing: 2px;
     }
+}
+
+/* ===== DEBUG PANEL (shown with ?debug=true) ===== */
+.debug-panel {
+    position: fixed;
+    top: 100px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid #f1c40f;
+    border-radius: 10px;
+    padding: 10px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.debug-title {
+    color: #f1c40f;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.debug-btn {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    transition: transform 0.2s, filter 0.2s;
+}
+
+.debug-btn:hover {
+    filter: brightness(1.2);
+    transform: scale(1.05);
+}
+
+.debug-btn[data-action="push"] {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.debug-btn[data-action="jacked"] {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.debug-btn[data-action="watchout"] {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
 }
