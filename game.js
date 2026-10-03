@@ -1335,6 +1335,22 @@ function isFirebaseReady() {
     return firebaseReady && database !== null;
 }
 
+// Escape text from other players (names, messages) before putting it in HTML
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// How long an invite stays open before it expires
+const INVITE_TIMEOUT_MS = 30000;
+
+// How recently a player must have sent a heartbeat to count as online
+const ONLINE_WINDOW_MS = 30000;
+
 // ===== COOKIE HELPERS =====
 function setCookie(name, value, days = 365) {
     const maxAge = days * 24 * 60 * 60;
@@ -1361,11 +1377,24 @@ class MultiplayerManager {
         this.isHost = false;
         this.opponentId = null;
         this.opponentUsername = null;
-        this.listeners = [];
         this.inviteTimeout = null;
         this.pendingInviteId = null;
 
+        // Difference between Firebase's clock and this device's clock
+        // (device clocks are often wrong, so compare timestamps using server time)
+        this.serverTimeOffset = 0;
+        if (database) {
+            database.ref('.info/serverTimeOffset').on('value', (snapshot) => {
+                this.serverTimeOffset = snapshot.val() || 0;
+            });
+        }
+
         this.initPromise = this.initializeUser();
+    }
+
+    // Current time according to Firebase's clock
+    serverNow() {
+        return Date.now() + this.serverTimeOffset;
     }
 
     async initializeUser() {
@@ -1376,7 +1405,11 @@ class MultiplayerManager {
         if (savedUserId && savedUsername) {
             this.userId = savedUserId;
             this.username = savedUsername;
-            await this.goOnline();
+            try {
+                await this.goOnline();
+            } catch (e) {
+                console.log('Could not go online:', e);
+            }
         }
     }
 
@@ -1391,8 +1424,11 @@ class MultiplayerManager {
 
     async setUsername(username) {
         // Generate unique user ID if not exists
+        // (Falls back to a local ID when Firebase is unavailable, so offline play still works)
         if (!this.userId) {
-            this.userId = database.ref('users').push().key;
+            this.userId = isFirebaseReady()
+                ? database.ref('users').push().key
+                : 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
         }
 
         this.username = username;
@@ -1401,8 +1437,12 @@ class MultiplayerManager {
         setCookie('pushUserId', this.userId);
         setCookie('pushUsername', this.username);
 
-        // Save to Firebase
-        await this.goOnline();
+        // Save to Firebase (a failure here shouldn't block playing the computer)
+        try {
+            await this.goOnline();
+        } catch (e) {
+            console.log('Could not go online:', e);
+        }
 
         return true;
     }
@@ -1507,16 +1547,29 @@ class MultiplayerManager {
     listenForInvites() {
         if (!database || !this.userId) return;
 
+        // Only one invite listener at a time (goOnline runs again when the name changes)
+        if (this.invitesRef) {
+            this.invitesRef.off('child_added');
+        }
+
         const invitesRef = database.ref('invites').orderByChild('to').equalTo(this.userId);
+        this.invitesRef = invitesRef;
 
         invitesRef.on('child_added', (snapshot) => {
             const invite = snapshot.val();
+            if (!invite) return;
+
+            // Invites expire after 30 seconds - clean up old ones instead of showing them
+            const age = this.serverNow() - (invite.timestamp || 0);
+            if (age > INVITE_TIMEOUT_MS) {
+                snapshot.ref.remove().catch(() => {});
+                return;
+            }
+
             if (invite.status === 'pending') {
                 this.showInvite(snapshot.key, invite);
             }
         });
-
-        this.listeners.push({ ref: invitesRef, event: 'child_added' });
     }
 
     async showInvite(inviteId, invite) {
@@ -1544,38 +1597,50 @@ class MultiplayerManager {
 
         this.pendingInviteId = inviteId;
 
-        // Start countdown
-        let timeLeft = 30;
+        // Start countdown (stop any countdown from an earlier invite first)
+        clearInterval(this.inviteTimeout);
+        const expiresAt = (invite.timestamp || this.serverNow()) + INVITE_TIMEOUT_MS;
         const timerEl = document.getElementById('invite-timer');
-        timerEl.textContent = `Expires in ${timeLeft}s`;
-
-        this.inviteTimeout = setInterval(() => {
-            timeLeft--;
+        const updateTimer = () => {
+            const timeLeft = Math.max(0, Math.ceil((expiresAt - this.serverNow()) / 1000));
             timerEl.textContent = `Expires in ${timeLeft}s`;
-
             if (timeLeft <= 0) {
-                this.declineInvite();
+                this.expireInvite();
             }
-        }, 1000);
+        };
+        updateTimer();
+        this.inviteTimeout = setInterval(updateTimer, 1000);
+    }
+
+    // Invite ran out of time - just close it (the sender cleans up the invite record)
+    expireInvite() {
+        clearInterval(this.inviteTimeout);
+        this.inviteTimeout = null;
+        this.pendingInviteId = null;
+        document.getElementById('invite-modal').classList.remove('show');
     }
 
     async acceptInvite() {
         if (!this.pendingInviteId) return;
 
+        const inviteId = this.pendingInviteId;
+        this.pendingInviteId = null;
         clearInterval(this.inviteTimeout);
         document.getElementById('invite-modal').classList.remove('show');
-        document.getElementById('win-modal').classList.remove('show');
 
-        const inviteSnap = await database.ref(`invites/${this.pendingInviteId}`).once('value');
+        const inviteSnap = await database.ref(`invites/${inviteId}`).once('value');
         const invite = inviteSnap.val();
 
-        if (!invite || invite.status !== 'pending') {
+        if (!invite || invite.status !== 'pending' ||
+            this.serverNow() - (invite.timestamp || 0) > INVITE_TIMEOUT_MS) {
             alert('Invite expired or cancelled');
             return;
         }
 
+        document.getElementById('win-modal').classList.remove('show');
+
         // Update invite status
-        await database.ref(`invites/${this.pendingInviteId}`).update({
+        await database.ref(`invites/${inviteId}`).update({
             status: 'accepted'
         });
 
@@ -1591,14 +1656,17 @@ class MultiplayerManager {
     async declineInvite() {
         if (!this.pendingInviteId) return;
 
+        const inviteId = this.pendingInviteId;
+        this.pendingInviteId = null;
         clearInterval(this.inviteTimeout);
         document.getElementById('invite-modal').classList.remove('show');
 
-        await database.ref(`invites/${this.pendingInviteId}`).update({
-            status: 'declined'
-        });
-
-        this.pendingInviteId = null;
+        // Only mark it declined if the invite still exists (the sender may have cancelled it)
+        const inviteRef = database.ref(`invites/${inviteId}`);
+        const snap = await inviteRef.once('value');
+        if (snap.exists()) {
+            await inviteRef.update({ status: 'declined' });
+        }
     }
 
     waitForGame(hostId) {
@@ -1606,17 +1674,27 @@ class MultiplayerManager {
         const gamesRef = database.ref('games').orderByChild('player2').equalTo(this.userId);
         let hasJoined = false;
 
+        // Give up if the host never creates the game (e.g. they closed their tab)
+        const giveUpTimeout = setTimeout(() => {
+            if (hasJoined) return;
+            gamesRef.off('child_added');
+            this.opponentId = null;
+            this.opponentUsername = null;
+            alert("Couldn't start the game. Please try again!");
+        }, 20000);
+
         gamesRef.on('child_added', (snapshot) => {
             if (hasJoined) return; // Prevent double-joining
 
             const game = snapshot.val();
             // Check it's from the right host, is currently playing, and was created recently (within last 60 seconds)
             const gameCreatedAt = game.createdAt || 0;
-            const isRecentGame = (Date.now() - gameCreatedAt) < 60000;
+            const isRecentGame = (this.serverNow() - gameCreatedAt) < 60000;
 
             if (game.player1 === hostId && game.status === 'playing' && isRecentGame && !game.winner) {
                 hasJoined = true;
-                gamesRef.off();
+                clearTimeout(giveUpTimeout);
+                gamesRef.off('child_added');
                 this.joinGame(snapshot.key, game);
             }
         });
@@ -1636,10 +1714,7 @@ class MultiplayerManager {
             to: targetUserId,
             timestamp: firebase.database.ServerValue.TIMESTAMP,
             status: 'pending',
-            settings: {
-                pileCount: this.game.settings.pileCount,
-                jackOnJack: this.game.settings.jackOnJack
-            }
+            settings: this.getGameSettings()
         });
 
         // Show waiting modal
@@ -1647,19 +1722,27 @@ class MultiplayerManager {
         document.getElementById('waiting-modal').classList.add('show');
         document.getElementById('lobby-modal').classList.remove('show');
 
-        this.pendingInviteId = inviteRef.key;
         this.opponentId = targetUserId;
         this.opponentUsername = targetName;
 
-        // Auto-cancel after 30 seconds (store timeout ID so we can clear it)
-        const inviteTimeoutId = setTimeout(async () => {
-            const snap = await inviteRef.once('value');
-            if (snap.val() && snap.val().status === 'pending') {
-                await inviteRef.remove();
-                document.getElementById('waiting-modal').classList.remove('show');
-                alert('Invite expired');
-            }
-        }, 30000);
+        // Stop listening to this invite and remove its record
+        const finishInvite = () => {
+            clearTimeout(inviteTimeoutId);
+            inviteRef.off('value');
+            inviteRef.remove().catch(() => {});
+            this.sentInvite = null;
+            document.getElementById('waiting-modal').classList.remove('show');
+        };
+
+        // Auto-cancel after 30 seconds
+        const inviteTimeoutId = setTimeout(() => {
+            finishInvite();
+            this.opponentId = null;
+            this.opponentUsername = null;
+            alert('Invite expired');
+        }, INVITE_TIMEOUT_MS);
+
+        this.sentInvite = { finish: finishInvite };
 
         // Listen for response
         inviteRef.on('value', async (snapshot) => {
@@ -1667,14 +1750,10 @@ class MultiplayerManager {
             if (!invite) return;
 
             if (invite.status === 'accepted') {
-                clearTimeout(inviteTimeoutId);  // Clear timeout on accept
-                inviteRef.off();
-                document.getElementById('waiting-modal').classList.remove('show');
+                finishInvite();
                 await this.createGame();
             } else if (invite.status === 'declined') {
-                clearTimeout(inviteTimeoutId);  // Clear timeout on decline
-                inviteRef.off();
-                document.getElementById('waiting-modal').classList.remove('show');
+                finishInvite();
                 alert(`${targetName} declined the invite`);
                 this.opponentId = null;
                 this.opponentUsername = null;
@@ -1683,9 +1762,8 @@ class MultiplayerManager {
     }
 
     cancelInvite() {
-        if (this.pendingInviteId) {
-            database.ref(`invites/${this.pendingInviteId}`).remove();
-            this.pendingInviteId = null;
+        if (this.sentInvite) {
+            this.sentInvite.finish();
         }
         document.getElementById('waiting-modal').classList.remove('show');
         this.opponentId = null;
@@ -1708,7 +1786,8 @@ class MultiplayerManager {
         const gameRef = database.ref('games').push();
         this.currentGameId = gameRef.key;
 
-        const pileCount = this.game.settings.pileCount;
+        const gameSettings = this.getGameSettings();
+        const pileCount = gameSettings.pileCount;
 
         await gameRef.set({
             player1: this.userId,
@@ -1721,7 +1800,7 @@ class MultiplayerManager {
             player2Deck: player2Deck,
             piles: Array(pileCount).fill([]),
             pileStates: Array(pileCount).fill(null),
-            settings: this.game.settings,
+            settings: gameSettings,
             lastMove: null,
             messages: null,
             winner: null,
@@ -1736,7 +1815,15 @@ class MultiplayerManager {
         this.startGameListeners();
 
         // Initialize local game state
-        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true);
+        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true, gameSettings);
+    }
+
+    // The rule settings shared by both players in an online game
+    getGameSettings() {
+        return {
+            pileCount: this.game.settings.pileCount,
+            jackOnJack: this.game.settings.jackOnJack
+        };
     }
 
     async joinGame(gameId, gameData) {
@@ -1746,15 +1833,8 @@ class MultiplayerManager {
         this.opponentId = gameData.player1;
         this.opponentUsername = gameData.player1Username;
 
-        // Apply host's settings (pileCount and jackOnJack) to invitee
-        if (gameData.settings) {
-            this.game.settings.pileCount = gameData.settings.pileCount;
-            this.game.settings.jackOnJack = gameData.settings.jackOnJack;
-            this.game.updateSettingsUI();
-        }
-
-        // Initialize local game state FIRST (before listeners can fire)
-        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
+        // Initialize local game state FIRST (before listeners can fire), using the host's rules
+        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false, gameData.settings);
 
         // Then start listening for moves
         this.startGameListeners();
@@ -1764,6 +1844,11 @@ class MultiplayerManager {
         if (!this.currentGameId) return;
 
         const gameRef = database.ref(`games/${this.currentGameId}`);
+
+        // Remember each child ref so endGame can remove these listeners
+        // (calling off() on the parent ref does NOT remove listeners on children)
+        this.stopGameListeners();
+        this.gameListenerRefs = ['lastMove', 'messages', 'winner', 'status'].map(key => gameRef.child(key));
 
         // Listen for moves - skip initial value, only react to changes
         let moveInitialLoad = true;
@@ -1817,6 +1902,13 @@ class MultiplayerManager {
         this.startOpponentHeartbeatMonitor();
     }
 
+    stopGameListeners() {
+        if (this.gameListenerRefs) {
+            this.gameListenerRefs.forEach(ref => ref.off());
+            this.gameListenerRefs = null;
+        }
+    }
+
     startOpponentHeartbeatMonitor() {
         if (!this.opponentId) return;
 
@@ -1837,9 +1929,8 @@ class MultiplayerManager {
 
             try {
                 const snapshot = await database.ref(`users/${this.opponentId}/lastSeen`).once('value');
-                const lastSeen = snapshot.val();
-                const now = Date.now();
-                const timeSinceLastSeen = now - lastSeen;
+                const lastSeen = snapshot.val() || 0;
+                const timeSinceLastSeen = this.serverNow() - lastSeen;
 
                 if (timeSinceLastSeen > GRACE_PERIOD) {
                     opponentMissingCount++;
@@ -1914,8 +2005,8 @@ class MultiplayerManager {
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.innerHTML = `
-            <div class="toast-sender">${sender}</div>
-            <div class="toast-message">${message}</div>
+            <div class="toast-sender">${escapeHtml(sender)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
         `;
         container.appendChild(toast);
 
@@ -1932,25 +2023,28 @@ class MultiplayerManager {
     }
 
     async endGame(keepRematchInfo = false) {
-        if (!this.currentGameId) return;
+        if (!keepRematchInfo) {
+            // Leaving for good - stop any rematch we were waiting on
+            this.cancelRematchRequest();
+        }
+
+        if (!this.currentGameId) {
+            if (!keepRematchInfo) {
+                this.rematchOpponentId = null;
+                this.rematchOpponentUsername = null;
+                this.lastGameId = null;
+            }
+            return;
+        }
 
         // Store info for potential rematch before clearing
         const rematchOpponentId = this.opponentId;
         const rematchOpponentUsername = this.opponentUsername;
-        const rematchGameId = this.currentGameId;
+        const gameId = this.currentGameId;
+        const wasActive = this.game.gameActive;
 
-        // Mark game as abandoned so opponent knows
-        if (this.game.gameActive) {
-            await database.ref(`games/${this.currentGameId}/status`).set('abandoned');
-        }
-
-        // Update user status
-        if (this.userId) {
-            await database.ref(`users/${this.userId}`).update({ inGame: null });
-        }
-
-        // Clean up listeners and monitors
-        database.ref(`games/${this.currentGameId}`).off();
+        // Clean up listeners and monitors right away so nothing fires for this game anymore
+        this.stopGameListeners();
         this.stopOpponentHeartbeatMonitor();
 
         this.currentGameId = null;
@@ -1961,13 +2055,27 @@ class MultiplayerManager {
         if (keepRematchInfo) {
             this.rematchOpponentId = rematchOpponentId;
             this.rematchOpponentUsername = rematchOpponentUsername;
-            this.lastGameId = rematchGameId;
+            this.lastGameId = gameId;
         } else {
             this.opponentId = null;
             this.opponentUsername = null;
             this.rematchOpponentId = null;
             this.rematchOpponentUsername = null;
             this.lastGameId = null;
+        }
+
+        try {
+            // Mark game as abandoned so opponent knows
+            if (wasActive) {
+                await database.ref(`games/${gameId}/status`).set('abandoned');
+            }
+
+            // Update user status
+            if (this.userId) {
+                await database.ref(`users/${this.userId}`).update({ inGame: null });
+            }
+        } catch (e) {
+            console.log('Error ending game:', e);
         }
     }
 
@@ -1976,35 +2084,53 @@ class MultiplayerManager {
 
         try {
             // Create rematch request in Firebase
-            await database.ref(`games/${this.lastGameId}/rematch/${this.userId}`).set({
+            const myRequestRef = database.ref(`games/${this.lastGameId}/rematch/${this.userId}`);
+            await myRequestRef.set({
                 requested: true,
-                timestamp: Date.now()
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             });
 
             // Listen for opponent's rematch response
             return new Promise((resolve) => {
                 const rematchRef = database.ref(`games/${this.lastGameId}/rematch`);
+                const opponentId = this.rematchOpponentId;
+
+                const finish = (bothWantRematch) => {
+                    clearTimeout(timeoutId);
+                    rematchRef.off('value', checkRematch);
+                    this.pendingRematch = null;
+                    if (!bothWantRematch) {
+                        // Withdraw our request so it can't trigger a rematch later
+                        myRequestRef.remove().catch(() => {});
+                    }
+                    resolve(bothWantRematch);
+                };
 
                 const checkRematch = (snapshot) => {
-                    const rematchData = snapshot.val();
-                    if (rematchData && rematchData[this.rematchOpponentId]?.requested) {
+                    const request = snapshot.val()?.[opponentId];
+                    // Ignore old requests the opponent left behind
+                    if (request?.requested && this.serverNow() - (request.timestamp || 0) < INVITE_TIMEOUT_MS) {
                         // Both players want rematch!
-                        rematchRef.off('value', checkRematch);
-                        resolve(true);
+                        finish(true);
                     }
                 };
 
-                rematchRef.on('value', checkRematch);
-
                 // Timeout after 30 seconds
-                setTimeout(() => {
-                    rematchRef.off('value', checkRematch);
-                    resolve(false);
-                }, 30000);
+                const timeoutId = setTimeout(() => finish(false), INVITE_TIMEOUT_MS);
+
+                this.pendingRematch = { cancel: () => finish(false) };
+                rematchRef.on('value', checkRematch);
             });
         } catch (e) {
             console.log('Rematch request failed:', e);
             return false;
+        }
+    }
+
+    // Stop waiting for a rematch (e.g. player went back to the menu)
+    cancelRematchRequest() {
+        if (this.pendingRematch) {
+            this.pendingRematch.cancel();
         }
     }
 
@@ -2027,7 +2153,9 @@ class MultiplayerManager {
     }
 
     async createRematchGame() {
-        const pileCount = this.game.settings.pileCount;
+        // Keep the same rules as the game just played
+        const gameSettings = { pileCount: this.game.rules.pileCount, jackOnJack: this.game.rules.jackOnJack };
+        const pileCount = gameSettings.pileCount;
         const fullDeck = this.createFullDeck();
         this.shuffleArray(fullDeck);
         const player1Deck = fullDeck.slice(0, 26);
@@ -2043,17 +2171,18 @@ class MultiplayerManager {
             player1Username: this.username,
             player2: this.opponentId,
             player2Username: this.opponentUsername,
-            status: 'active',
+            status: 'playing',
             currentTurn: 'player1',
             player1Deck: player1Deck,
             player2Deck: player2Deck,
             piles: Array(pileCount).fill([]),
             pileStates: Array(pileCount).fill(null),
-            settings: this.game.settings,
+            settings: gameSettings,
             lastMove: null,
             messages: null,
             winner: null,
-            isRematch: true
+            isRematch: true,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
         });
 
         // Update both users' inGame status
@@ -2065,7 +2194,7 @@ class MultiplayerManager {
             await database.ref(`games/${this.lastGameId}/rematchGameId`).set(this.currentGameId);
         }
 
-        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true);
+        this.game.startMultiplayerGame(player1Deck, this.opponentUsername, true, gameSettings);
         this.startGameListeners();
     }
 
@@ -2073,9 +2202,13 @@ class MultiplayerManager {
         return new Promise((resolve) => {
             const rematchRef = database.ref(`games/${this.lastGameId}/rematchGameId`);
 
+            let joined = false;
+
             rematchRef.on('value', async (snapshot) => {
                 const newGameId = snapshot.val();
-                if (newGameId) {
+                if (newGameId && !joined) {
+                    joined = true;
+                    clearTimeout(giveUpTimeout);
                     rematchRef.off();
                     this.currentGameId = newGameId;
                     this.isHost = false;
@@ -2086,16 +2219,19 @@ class MultiplayerManager {
                     const gameData = gameSnapshot.val();
 
                     if (gameData) {
-                        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false);
+                        this.game.startMultiplayerGame(gameData.player2Deck, this.opponentUsername, false, gameData.settings);
                         this.startGameListeners();
                     }
                     resolve();
                 }
             });
 
-            // Timeout
-            setTimeout(() => {
+            // Timeout - the other player never created the game
+            const giveUpTimeout = setTimeout(() => {
+                if (joined) return;
                 rematchRef.off();
+                alert("Couldn't start the rematch. Please try again!");
+                this.game.showModeSelection();
                 resolve();
             }, 10000);
         });
@@ -2129,9 +2265,13 @@ class MultiplayerManager {
             .equalTo(true)
             .once('value');
 
+        // "online" isn't reliably cleared when a phone/tablet closes the page,
+        // so also require a recent heartbeat
+        const now = this.serverNow();
         const players = [];
         snapshot.forEach((child) => {
-            if (child.key !== this.userId) {
+            const lastSeen = child.val().lastSeen || 0;
+            if (child.key !== this.userId && now - lastSeen < ONLINE_WINDOW_MS) {
                 players.push({
                     id: child.key,
                     ...child.val()
@@ -2171,7 +2311,7 @@ class PushGame {
             opponentTurn: "{name}'s turn...",
             opponentThinking: "Opponent is thinking...",
             opponentPlayed: "Opponent played {card}",
-            youGotJacked: "You got JACKED! Opponent takes the pile!",
+            youGotJacked: "You JACKED them! Opponent takes the pile!",
             opponentGotJacked: "You got JACKED! You take the pile!",
             specialOnSpecialYou: "Special on special! You take the pile!",
             specialOnSpecialOpp: "Special on special! Opponent takes the pile.",
@@ -2210,6 +2350,10 @@ class PushGame {
         this.yourMoveElement = null;
 
         this.loadSettings();
+
+        // Rules locked in for the current game (settings changes apply next game)
+        this.rules = { pileCount: this.settings.pileCount, jackOnJack: this.settings.jackOnJack };
+
         this.loadTheme();
         this.initializeEventListeners();
         this.initializeMultiplayer();
@@ -2429,7 +2573,7 @@ class PushGame {
                 const themeName = this.getThemeDisplayName(suggestedTheme);
                 this.pendingThemeSuggestion = suggestedTheme;
                 document.getElementById('name-theme-message').innerHTML =
-                    `Your name "<strong>${this.pendingUsername}</strong>" matches the <strong>${themeName}</strong> theme! Want to switch to it?`;
+                    `Your name "<strong>${escapeHtml(this.pendingUsername)}</strong>" matches the <strong>${escapeHtml(themeName)}</strong> theme! Want to switch to it?`;
                 document.getElementById('accept-name-theme-btn').style.display = '';
                 document.getElementById('decline-name-theme-btn').textContent = 'No thanks';
                 document.getElementById('name-theme-modal').classList.add('show');
@@ -2446,6 +2590,11 @@ class PushGame {
             await this.multiplayer.setUsername(this.pendingUsername);
             document.getElementById('username-modal').classList.remove('show');
             this.pendingUsername = null;
+
+            // Show mode selection unless a game is already in progress (e.g. changing name mid-game)
+            if (!this.gameActive) {
+                this.showModeSelection();
+            }
         } catch (e) {
             error.textContent = 'Error saving username. Try again.';
         }
@@ -2464,9 +2613,9 @@ class PushGame {
         } else {
             document.getElementById('lobby-status').textContent = `${players.length} player${players.length > 1 ? 's' : ''} online`;
             const html = players.map(p => `
-                <div class="player-item ${p.inGame ? 'in-game' : ''}" data-userid="${p.id}">
+                <div class="player-item ${p.inGame ? 'in-game' : ''}" data-userid="${escapeHtml(p.id)}">
                     <div class="player-status-dot"></div>
-                    <span class="player-username">${p.username}</span>
+                    <span class="player-username">${escapeHtml(p.username)}</span>
                     <span class="player-status-text">${p.inGame ? 'In game' : 'Available'}</span>
                 </div>
             `).join('');
@@ -2482,9 +2631,15 @@ class PushGame {
         }
     }
 
-    startMultiplayerGame(myDeck, opponentName, isHost) {
+    startMultiplayerGame(myDeck, opponentName, isHost, gameSettings) {
         // Clear any idle timer from previous game
         this.clearIdleTimer();
+
+        // Both players use the host's rules for this game
+        this.rules = {
+            pileCount: gameSettings?.pileCount || this.settings.pileCount,
+            jackOnJack: gameSettings ? !!gameSettings.jackOnJack : this.settings.jackOnJack
+        };
 
         this.isMultiplayerGame = true;
         this.isMyTurn = isHost; // Host (player1) goes first
@@ -2495,7 +2650,7 @@ class PushGame {
         this.opponentDeck = Array(26).fill(null); // Opponent has 26 cards (placeholder for count display)
 
         // Initialize piles - ensure completely fresh arrays
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.rules.pileCount;
         this.piles = [];
         this.pileStates = [];
         for (let i = 0; i < pileCount; i++) {
@@ -2517,7 +2672,7 @@ class PushGame {
 
         // Update opponent name display
         document.querySelector('.player-info.opponent .player-name').innerHTML =
-            `<span class="opponent-username">${opponentName}</span>'s Cards`;
+            `<span class="opponent-username">${escapeHtml(opponentName)}</span>'s Cards`;
 
         this.renderPilesHTML();
         this.renderPiles();
@@ -2609,24 +2764,28 @@ class PushGame {
 
         this.gameActive = false;
 
+        this.clearIdleTimer();
+
         const opponentName = this.multiplayer.opponentUsername || 'Opponent';
         document.getElementById('win-message').textContent = `${opponentName} left the game`;
+        document.getElementById('win-trophy').textContent = '👋';
+        document.getElementById('win-subtitle').textContent = '';
+        document.getElementById('win-content').classList.remove('victory', 'defeat');
+        document.getElementById('rematch-status').style.display = 'none';
         document.getElementById('win-modal').classList.add('show');
 
         // Show departure animation
-        const animationEl = document.getElementById('win-animation');
+        const animationEl = document.getElementById('win-confetti');
         animationEl.innerHTML = '';
         const symbols = ['👋', '🚪', '💨', '🏃'];
         for (let i = 0; i < 15; i++) {
             const span = document.createElement('span');
+            span.className = 'confetti-piece';
             span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-            span.style.cssText = `
-                position: absolute;
-                font-size: ${Math.random() * 20 + 20}px;
-                left: ${Math.random() * 100}%;
-                animation: float ${Math.random() * 2 + 2}s ease-in-out infinite;
-                animation-delay: ${Math.random() * 2}s;
-            `;
+            span.style.left = `${Math.random() * 100}%`;
+            span.style.fontSize = `${Math.random() * 20 + 20}px`;
+            span.style.animationDelay = `${Math.random() * 2}s`;
+            span.style.animationDuration = `${Math.random() * 2 + 2}s`;
             animationEl.appendChild(span);
         }
 
@@ -2753,8 +2912,10 @@ class PushGame {
             const saved = localStorage.getItem('pushGameTheme');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                this.currentTheme = parsed;
-                this.applyTheme(parsed.set, parsed.id);
+                // Fall back to the default if the saved theme no longer exists
+                if (!parsed || !this.applyTheme(parsed.set, parsed.id)) {
+                    this.applyTheme('color', 'forest-deep');
+                }
             } else {
                 // Check for auto-detect suggestion
                 this.checkThemeSuggestion();
@@ -3131,8 +3292,11 @@ class PushGame {
         this.playerDeck = fullDeck.slice(0, 26);
         this.opponentDeck = fullDeck.slice(26);
 
+        // Lock in rules for this game
+        this.rules = { pileCount: this.settings.pileCount, jackOnJack: this.settings.jackOnJack };
+
         // Reset piles based on settings
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.rules.pileCount;
         this.piles = Array(pileCount).fill(null).map(() => []);
         this.pileStates = Array(pileCount).fill(null);
         this.currentCard = null;
@@ -3155,7 +3319,7 @@ class PushGame {
 
     renderPilesHTML() {
         const pilesArea = document.querySelector('.piles-area');
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
 
         // Create pile HTML
         let html = '';
@@ -3191,6 +3355,11 @@ class PushGame {
         this.updateUI();
         this.setStatus(this.messages.clickPile);
         this.highlightPiles(true);
+
+        // Warn if every pile is 2 away from a push (checked now that we know the card)
+        if (this.checkAllPilesAtTwoToPush()) {
+            this.showWatchOutHint();
+        }
     }
 
     playCardOnPile(pileIndex) {
@@ -3200,6 +3369,9 @@ class PushGame {
         } else {
             if (!this.gameActive || !this.isPlayerTurn || !this.currentCard) return;
         }
+
+        // Player moved - stop idle warnings right away
+        this.clearIdleTimer();
 
         // Play soft card sound
         soundManager.playCardPlay();
@@ -3237,7 +3409,7 @@ class PushGame {
                 this.updateUI();
 
                 // Jack on Jack special rule (if enabled)
-                if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) {
+                if (card.rank === 'J' && topCard.rank === 'J' && this.rules.jackOnJack) {
                     // Jack on Jack = the OTHER player takes pile (JACKED!)
                     this.showPushPopup('JACKED!');
                     this.setStatus(isPlayer ? this.messages.youGotJacked : this.messages.opponentGotJacked);
@@ -3311,11 +3483,6 @@ class PushGame {
 
         // Switch turns - strictly alternate
         this.switchTurn();
-
-        // Check for "Watch out!" warning after turn switches
-        if (this.checkAllPilesAtTwoToPush()) {
-            this.showWatchOutHint();
-        }
     }
 
     animateCardToPlay(card, pileIndex, fromWho, callback) {
@@ -3414,13 +3581,13 @@ class PushGame {
 
     // Kid strategy - completely random
     chooseRandomPile() {
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         return Math.floor(Math.random() * pileCount);
     }
 
     // Fun strategy - original basic AI logic
     chooseFunPile(card) {
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         const validPiles = Array.from({ length: pileCount }, (_, i) => i);
 
         // If we have a special card, try to play it safely
@@ -3434,7 +3601,7 @@ class PushGame {
                 if (!this.isSpecialCard(topCard)) return i; // Number card is safe
 
                 // Jack on Jack makes player take pile - good move! (only if setting is ON)
-                if (card.rank === 'J' && topCard.rank === 'J' && this.settings.jackOnJack) return i;
+                if (card.rank === 'J' && topCard.rank === 'J' && this.rules.jackOnJack) return i;
             }
 
             // Have to play on a special card - pick the smallest pile
@@ -3479,11 +3646,11 @@ class PushGame {
 
     // Expert strategy - applies 6 rules in priority order
     chooseExpertPile(card) {
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         const validPiles = Array.from({ length: pileCount }, (_, i) => i);
 
         // Rule 1: Jack-on-Jack opportunity
-        if (this.settings.jackOnJack && card.rank === 'J') {
+        if (this.rules.jackOnJack && card.rank === 'J') {
             for (const i of validPiles) {
                 const pile = this.piles[i];
                 if (pile.length > 0) {
@@ -3675,8 +3842,9 @@ class PushGame {
             this.clearIdleTimer(); // Clear idle timer on game end
             if (this.isMultiplayerGame) {
                 // In multiplayer, show win locally AND notify Firebase
-                this.handleMultiplayerWin(true);
+                // Notify Firebase first (ending the game clears the game ID), then show result
                 this.multiplayer.setWinner(true);
+                this.handleMultiplayerWin(true);
             } else {
                 this.showWinModal(true);
             }
@@ -3687,8 +3855,9 @@ class PushGame {
             this.clearIdleTimer(); // Clear idle timer on game end
             if (this.isMultiplayerGame) {
                 // In multiplayer, show loss locally AND notify Firebase
-                this.handleMultiplayerWin(false);
+                // Notify Firebase first (ending the game clears the game ID), then show result
                 this.multiplayer.setWinner(false);
+                this.handleMultiplayerWin(false);
             } else {
                 this.showWinModal(false);
             }
@@ -3768,7 +3937,7 @@ class PushGame {
     }
 
     highlightPiles(highlight) {
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         for (let i = 0; i < pileCount; i++) {
             const pile = document.getElementById(`pile-${i}`);
             if (pile) {
@@ -3842,7 +4011,7 @@ class PushGame {
         // Only show if the player does NOT have a special card
         if (this.currentCard && this.isSpecialCard(this.currentCard)) return false;
 
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         let pilesAtTwo = 0;
         let activePiles = 0;
 
@@ -3994,7 +4163,7 @@ class PushGame {
 
         // Find valid piles (non-null pileStates or empty piles)
         const validPiles = [];
-        for (let i = 0; i < this.settings.pileCount; i++) {
+        for (let i = 0; i < this.piles.length; i++) {
             // Can always play on any pile
             validPiles.push(i);
         }
@@ -4146,7 +4315,7 @@ class PushGame {
     }
 
     renderPiles(animatePileIndex = -1) {
-        const pileCount = this.settings.pileCount;
+        const pileCount = this.piles.length;
         for (let i = 0; i < pileCount; i++) {
             const pile = this.piles[i];
             const pileState = this.pileStates[i];
@@ -4191,7 +4360,7 @@ class PushGame {
         if (card.rank === 'A') {
             centerContent = `<span style="font-size: 2.5rem;">${symbol}</span>`;
         } else if (isFace) {
-            const faceEmoji = card.rank === 'J' ? '🤴' : card.rank === 'Q' ? '👸' : '🤴';
+            const faceEmoji = card.rank === 'J' ? '🤴' : card.rank === 'Q' ? '👸' : '👑';
             centerContent = `<span class="face-symbol">${faceEmoji}</span><span style="font-size: 1rem;">${symbol}</span>`;
         } else {
             // Number cards - create suit pattern
@@ -4293,13 +4462,4 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }, 1000); // 1 second fade duration
     }, 1750); // 1.75 second delay before fade
-
-    // When username is submitted, show mode selection
-    const originalSubmit = window.game.submitUsername.bind(window.game);
-    window.game.submitUsername = async function() {
-        await originalSubmit();
-        if (window.game.multiplayer.hasUsername()) {
-            document.getElementById('mode-modal').classList.add('show');
-        }
-    };
 });

@@ -267,6 +267,16 @@
             console.log('Firebase initialization failed:', e);
         }
 
+        // Escape text from the database before putting it in HTML
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function loadData() {
             if (!database) {
                 document.getElementById('users-table-body').innerHTML =
@@ -290,7 +300,7 @@
                 const inGameUsers = userList.filter(([id, u]) => u.inGame).length;
 
                 const gameList = Object.entries(games);
-                const activeGames = gameList.filter(([id, g]) => g.status === 'active').length;
+                const activeGames = gameList.filter(([id, g]) => g.status === 'playing' || g.status === 'active').length;
 
                 // Update stats
                 document.getElementById('total-users').textContent = totalUsers;
@@ -318,9 +328,9 @@
                         return `
                             <tr>
                                 <td><span class="status-dot ${statusClass}"></span>${statusText}</td>
-                                <td>${user.username || 'Unknown'}</td>
-                                <td class="timestamp">${id.substring(0, 12)}...</td>
-                                <td>${user.inGame ? user.inGame.substring(0, 8) + '...' : '-'}</td>
+                                <td>${escapeHtml(user.username || 'Unknown')}</td>
+                                <td class="timestamp">${escapeHtml(id.substring(0, 12))}...</td>
+                                <td>${user.inGame ? escapeHtml(String(user.inGame).substring(0, 8)) + '...' : '-'}</td>
                                 <td class="timestamp">${lastSeen}</td>
                             </tr>
                         `;
@@ -330,7 +340,7 @@
                 }
 
                 // Render games table
-                const activeGameList = gameList.filter(([id, g]) => g.status === 'active' || g.status === 'waiting');
+                const activeGameList = gameList.filter(([id, g]) => g.status === 'playing' || g.status === 'active' || g.status === 'waiting');
 
                 if (activeGameList.length === 0) {
                     document.getElementById('games-table-body').innerHTML =
@@ -339,11 +349,11 @@
                     const gamesHtml = activeGameList.map(([id, game]) => {
                         return `
                             <tr>
-                                <td class="timestamp">${id.substring(0, 12)}...</td>
-                                <td>${game.player1Username || 'Unknown'}</td>
-                                <td>${game.player2Username || 'Waiting...'}</td>
-                                <td>${game.status}</td>
-                                <td>${game.currentTurn || '-'}</td>
+                                <td class="timestamp">${escapeHtml(id.substring(0, 12))}...</td>
+                                <td>${escapeHtml(game.player1Username || 'Unknown')}</td>
+                                <td>${escapeHtml(game.player2Username || 'Waiting...')}</td>
+                                <td>${escapeHtml(game.status)}</td>
+                                <td>${escapeHtml(game.currentTurn || '-')}</td>
                             </tr>
                         `;
                     }).join('');
@@ -354,7 +364,7 @@
             } catch (e) {
                 console.error('Error loading data:', e);
                 document.getElementById('users-table-body').innerHTML =
-                    `<tr><td colspan="5" class="loading">Error: ${e.message}</td></tr>`;
+                    `<tr><td colspan="5" class="loading">Error: ${escapeHtml(e.message)}</td></tr>`;
             }
         }
 
